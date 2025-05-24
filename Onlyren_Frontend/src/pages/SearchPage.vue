@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router'
 import RoomCard from '@/components/RoomCard.vue'
 import { fetchRooms } from '@/api/room'
 
+
+import OnlyHeader from '@/components/OnlyHeader.vue'
+
 // Search and filter state
 const searchQuery = ref('')
 const rooms = ref([])
@@ -74,17 +77,11 @@ onMounted(performSearch)
 </script>
 
 <template>
+
+      <OnlyHeader />
   <div class="container mx-auto px-4 py-6">
     <!-- Search Bar -->
-    <div class="mb-6">
-      <input 
-        v-model="searchQuery"
-        type="text" 
-        placeholder="Cari space produktivitas-mu"
-        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        @keyup.enter="performSearch"
-      />
-    </div>
+   
 
     <!-- Filters -->
     <div class="mb-6 flex space-x-4">
@@ -116,7 +113,8 @@ onMounted(performSearch)
           class="w-24 px-2 py-1 border rounded-lg"
         />
         <button 
-          class="px-3 py-1 bg-blue-500 text-white rounded-lg"
+          class="px-3 py-1 bg-orange-500 text-white rounded-lg"
+
           @click="applyFilters"
         >
           Apply
@@ -177,3 +175,4 @@ onMounted(performSearch)
     </div>
   </div>
 </template>
+

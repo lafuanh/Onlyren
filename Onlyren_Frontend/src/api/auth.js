@@ -1,75 +1,86 @@
-// src/api/auth.js
-import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL
+import axios from 'axios';
 
-// Mock function to simulate an API response for authenticated user
-export const mockGetCurrentUser = () => {
-  return new Promise((resolve, reject) => {
-    // Simulate a successful API response
-    setTimeout(() => {
-      const token = localStorage.getItem('token')
-      if (token) {
-        resolve({ id: 1, name: 'John Doe', email: 'john.doe@example.com' }) // Mock user data
-      } else {
-        reject('No authenticated user') // Reject if no token
-      }
-    }, 1000)
-  })
-}
+const API_URL = 'http://127.0.0.1:8080/api'; // Laravel backend API URL
 
-// Get current authenticated user (mock version)
-export const getCurrentUser = async () => {
-  return mockGetCurrentUser()
-}
-
-// Mock Login and Register methods for testing
+// Login API
 export const login = async (credentials) => {
-  const token = 'mockedToken' // Mocked token
-  localStorage.setItem('token', token)
-  return { token }
-}
+    try {
+        const response = await axios.post(`${API_URL}/login`, credentials);
+        // Save token to localStorage
+        localStorage.setItem('token', response.data.token);
+        return response.data;
+    } catch (error) {
+        console.error('Login failed:', error);
+        throw error;
+    }
+};
 
+// Register API
 export const register = async (userData) => {
-  const token = 'mockedToken' // Mocked token
-  localStorage.setItem('token', token)
-  return { token }
-}
+    try {
+        const response = await axios.post(`${API_URL}/register`, userData);
+        localStorage.setItem('token', response.data.token);
+        return response.data;
+    } catch (error) {
+        console.error('Registration failed:', error);
+        throw error;
+    }
+};
 
+// Logout API
 export const logout = async () => {
-  localStorage.removeItem('token')
-}
+    try {
+        await axios.post(`${API_URL}/logout`, null, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`, // Use the token
+            },
+        });
+        localStorage.removeItem('token');
+    } catch (error) {
+        console.error('Logout failed:', error);
+    }
+};
 
+// Get current authenticated user
+export const getCurrentUser = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/user`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`, // Add token to header
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching current user:', error);
+        throw error;
+    }
+};
 
-
-
-
-
-
-// Interceptor setup for Axios to attach the token to every request
+// Axios interceptor to add token to every request
 export const setupAxiosInterceptors = () => {
-  axios.interceptors.request.use(
-    (config) => {
-      const token = localStorage.getItem('token')
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`
-      }
-      return config
-    },
-    (error) => {
-      return Promise.reject(error)
-    }
-  )
+    axios.interceptors.request.use(
+        (config) => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                config.headers['Authorization'] = `Bearer ${token}`;
+            }
+            return config;
+        },
+        (error) => {
+            return Promise.reject(error);
+        }
+    );
 
-  // Response interceptor to handle authentication errors
-  axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response && error.response.status === 401) {
-        localStorage.removeItem('token') // Clear the token if it's invalid
-        window.location.href = '/login' // Redirect to the login page
-      }
-      return Promise.reject(error)
-    }
-  )
-}
+    // Handle response errors
+    axios.interceptors.response.use(
+        (response) => response,
+        (error) => {
+            if (error.response && error.response.status === 401) {
+                localStorage.removeItem('token'); // Clear the token if invalid
+                window.location.href = '/login'; // Redirect to login
+            }
+            return Promise.reject(error);
+        }
+    );
+};

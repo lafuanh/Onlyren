@@ -7,7 +7,8 @@ import SearchPage from '@/pages/SearchPage.vue'
 import RoomDetailPage from '@/pages/RoomDetail.vue'
 import UserProfilePage from '@/pages/UserProfilePage.vue'
 import RenterProfilePage from '@/pages/RenterProfilePage.vue'
-import MessagesPage from '@/pages/messagesPage.vue'
+import MessagesPage from '@/pages/MessagesPage.vue'
+
 import AuthPages from '@/pages/AuthPages.vue' // Import AuthPages.vue
 
 // Auth middleware
@@ -101,19 +102,20 @@ const routes = [
     component: MessagesPage,
     beforeEnter: requireAuth // Protect messages page from non-authenticated users
   },
-  // {
-  //   path: '/renter/rooms/new',
-  //   name: 'NewRoom',
-  //   component: () => import('@/pages/NewRoomPage.vue'),
-  //   beforeEnter: requireRenterAuth // Protect this page from non-renter users
-  // },
-  // {
-  //   path: '/renter/rooms/:id/edit',
-  //   name: 'EditRoom',
-  //   component: () => import('@/pages/EditRoomPage.vue'),
-  //   beforeEnter: requireRenterAuth,
-  //   props: true
-  // },
+  {
+    path: '/renter/rooms/new',
+    name: 'NewRoom',
+    component: () => import('@/pages/NewRoomPage.vue'),
+    beforeEnter: requireRenterAuth // Protect this page from non-renter users
+  },
+  {
+    path: '/renter/rooms/:id/edit',
+    name: 'EditRoom',
+    component: () => import('@/pages/EditRoomPage.vue'),
+    beforeEnter: requireRenterAuth,
+    props: true
+  },
+
   // {
   //   path: '/reservations',
   //   name: 'Reservations',
@@ -121,11 +123,14 @@ const routes = [
   //   beforeEnter: requireAuth // Protect the reservations page from non-authenticated users
   // },
   // 404 route
-//   {
-//     path: '/:pathMatch(.*)*',
-//     name: 'NotFound',
-//     component: () => import('@/pages/NotFoundPage.vue')
-//   }
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/pages/NotFoundPage.vue')
+  }
+
+
+
 ]
 
 const router = createRouter({

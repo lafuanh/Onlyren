@@ -7,9 +7,6 @@ import {
   sendMessage 
 } from '@/api/messages'
 
-// [Previous script setup remains the same]
-
-// Rest of the previous script setup
 </script>
 
 <template>

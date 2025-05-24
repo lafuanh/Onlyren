@@ -6,13 +6,13 @@
         <div class="flex items-center">
           <router-link to="/" class="flex items-center">
             <div class="flex items-center justify-center">
-                 <img src="@/assets/images/ss.jpg" alt="Workspace" class="w-[90px] h-[90px] object-cover " />
+                 <img src="@/assets/images/ss.jpg" alt="Workspace" class="w-[55px] h-[55px] object-cover " />
             </div>
           </router-link>
         </div>
              <!-- Title in the center -->
       <div class="flex-grow text-center">
-        <span class="text-6xl font-bold text-gray-800">ONLYREN</span>
+        <span class="text-6xl font-bold text-gray-600">ONLYREN</span>
       </div>
         <div class="flex items-center space-x-4">
           <router-link to="/messages" class="text-gray-600">

@@ -22,7 +22,7 @@
           Renter
         </button>
       </div>
-      
+
       <h1 class="text-2xl font-bold text-center mb-6">{{ isLogin ? 'Login' : 'Register' }}</h1>
       
       <!-- Login Form -->
@@ -119,15 +119,20 @@
 <script>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-// import { login, register } from '@/api/auth' // Uncomment when API is ready
+
+import { login, register } from '@/api/auth'
+
 
 export default {
   name: 'AuthPage',
   setup() {
     const router = useRouter()
-    const isLogin = ref(true)
-    const activeTab = ref('user')
+
+    const isLogin = ref(true) // Track whether we are in Login or Register state
+    const activeTab = ref('user') // Track which role is selected (user/renter)
     
+    // Reactive form data for login and register
+
     const loginForm = reactive({
       email: '',
       password: ''
@@ -140,47 +145,52 @@ export default {
       passwordConfirmation: ''
     })
     
+
+    // Handle login functionality
     const handleLogin = async () => {
       try {
-        // When API is ready:
-        // await login({
-        //   email: loginForm.email,
-        //   password: loginForm.password,
-        //   role: activeTab.value
-        // })
-        console.log('Login attempt', { ...loginForm, role: activeTab.value })
+        // Call the login API function (replace with actual API call later)
+        await login({
+          email: loginForm.email,
+          password: loginForm.password,
+          role: activeTab.value
+        })
+        console.log('Login successful for', activeTab.value)
         
-        // Redirect to dashboard or home after successful login
+        // Redirect to the home page after successful login
         router.push('/')
       } catch (error) {
         console.error('Login failed', error)
-        // Handle error (show message, etc.)
+        // Handle login error (display message, etc.)
       }
     }
     
+    // Handle register functionality
     const handleRegister = async () => {
       try {
         if (registerForm.password !== registerForm.passwordConfirmation) {
-          // Handle password mismatch
+          // Password mismatch validation
+
           console.error('Passwords do not match')
           return
         }
+ 
+        // Call the register API function (replace with actual API call later)
+        await register({
+          name: registerForm.name,
+          email: registerForm.email,
+          password: registerForm.password,
+          password_confirmation: registerForm.passwordConfirmation,
+          role: activeTab.value
+        })
+        console.log('Registration successful for', activeTab.value)
         
-        // When API is ready:
-        // await register({
-        //   name: registerForm.name,
-        //   email: registerForm.email,
-        //   password: registerForm.password,
-        //   password_confirmation: registerForm.passwordConfirmation,
-        //   role: activeTab.value
-        // })
-        console.log('Register attempt', { ...registerForm, role: activeTab.value })
-        
-        // Redirect or show success message
+        // Redirect to login page after successful registration
         isLogin.value = true
       } catch (error) {
         console.error('Registration failed', error)
-        // Handle error (show message, etc.)
+        // Handle register error (display message, etc.)
+
       }
     }
     
@@ -194,4 +204,5 @@ export default {
     }
   }
 }
+
 </script>

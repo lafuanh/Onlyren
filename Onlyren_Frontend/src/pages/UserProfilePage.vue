@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { fetchUserProfile, updateUserProfile } from '@/api/user'
 import { fetchUserReservations } from '@/api/reservation'
 import { logout } from '@/api/auth'
+import OnlyHeader from '@/components/OnlyHeader.vue'
+
 
 // Profile state
 const profile = ref({
@@ -136,6 +138,9 @@ onMounted(loadUserProfile)
 </script>
 
 <template>
+      <!-- Header -->
+    <OnlyHeader />
+
   <div class="container mx-auto px-4 py-6">
     <!-- Loading State -->
     <div v-if="isLoading" class="text-center py-6">
