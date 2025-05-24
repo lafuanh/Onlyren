@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import RoomCard from '@/components/RoomCard.vue'
 import { fetchRooms } from '@/api/room'
 
+
 import OnlyHeader from '@/components/OnlyHeader.vue'
 
 // Search and filter state
@@ -76,6 +77,7 @@ onMounted(performSearch)
 </script>
 
 <template>
+
       <OnlyHeader />
   <div class="container mx-auto px-4 py-6">
     <!-- Search Bar -->
@@ -112,6 +114,7 @@ onMounted(performSearch)
         />
         <button 
           class="px-3 py-1 bg-orange-500 text-white rounded-lg"
+
           @click="applyFilters"
         >
           Apply
@@ -172,5 +175,4 @@ onMounted(performSearch)
     </div>
   </div>
 </template>
-
 

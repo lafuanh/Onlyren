@@ -24,6 +24,7 @@ export default defineConfig({
     strictPort: true,
     watch: {
       usePolling: true // helps with file changes inside Docker on Windows/macOS
+
     }
   }
 })

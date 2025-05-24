@@ -119,16 +119,20 @@
 <script>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+
 import { login, register } from '@/api/auth'
+
 
 export default {
   name: 'AuthPage',
   setup() {
     const router = useRouter()
+
     const isLogin = ref(true) // Track whether we are in Login or Register state
     const activeTab = ref('user') // Track which role is selected (user/renter)
     
     // Reactive form data for login and register
+
     const loginForm = reactive({
       email: '',
       password: ''
@@ -141,6 +145,7 @@ export default {
       passwordConfirmation: ''
     })
     
+
     // Handle login functionality
     const handleLogin = async () => {
       try {
@@ -165,10 +170,11 @@ export default {
       try {
         if (registerForm.password !== registerForm.passwordConfirmation) {
           // Password mismatch validation
+
           console.error('Passwords do not match')
           return
         }
-        
+ 
         // Call the register API function (replace with actual API call later)
         await register({
           name: registerForm.name,
@@ -184,6 +190,7 @@ export default {
       } catch (error) {
         console.error('Registration failed', error)
         // Handle register error (display message, etc.)
+
       }
     }
     
@@ -197,4 +204,5 @@ export default {
     }
   }
 }
+
 </script>

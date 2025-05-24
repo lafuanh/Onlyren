@@ -4,7 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchRoomDetails, createReservation } from '@/api/room'
 import ReviewSection from '@/components/ReviewSection.vue'
 import ImageGallery from '@/components/ImageGallery.vue'
+
 import OnlyHeader from '@/components/OnlyHeader.vue'
+
 
 // Component state
 const room = ref(null)
@@ -68,6 +70,7 @@ const formatCurrency = (value) => {
 <template>
       <!-- Header -->
     <OnlyHeader />
+
   <div v-if="isLoading" class="text-center py-6">
     Loading room details...
   </div>

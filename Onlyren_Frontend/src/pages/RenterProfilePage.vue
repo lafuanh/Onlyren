@@ -154,6 +154,7 @@ const handleReservationStatusChange = async (reservationId, newStatus) => {
 
 <template>
   <!-- [Previous template remains the same] -->
+
   <OnlyHeader />
   <div class="container mx-auto px-4 py-6">
     <!-- Loading State -->
@@ -304,6 +305,7 @@ const handleReservationStatusChange = async (reservationId, newStatus) => {
         </button>
       </div>
     </div>
+
 
   <!-- Reservations Tab (replacing the previous incomplete section) -->
   <div v-if="activeTab === 'reservations'" class="bg-white shadow-md rounded-lg p-6">
@@ -506,7 +508,9 @@ const handleReservationStatusChange = async (reservationId, newStatus) => {
           </div>
         </form>
       </div>
+
       </div>
+
     </div>
   </div>
 </template>

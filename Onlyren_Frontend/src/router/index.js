@@ -8,6 +8,7 @@ import RoomDetailPage from '@/pages/RoomDetail.vue'
 import UserProfilePage from '@/pages/UserProfilePage.vue'
 import RenterProfilePage from '@/pages/RenterProfilePage.vue'
 import MessagesPage from '@/pages/MessagesPage.vue'
+
 import AuthPages from '@/pages/AuthPages.vue' // Import AuthPages.vue
 
 // Auth middleware
@@ -114,6 +115,7 @@ const routes = [
     beforeEnter: requireRenterAuth,
     props: true
   },
+
   // {
   //   path: '/reservations',
   //   name: 'Reservations',
@@ -126,6 +128,7 @@ const routes = [
     name: 'NotFound',
     component: () => import('@/pages/NotFoundPage.vue')
   }
+
 
 
 ]
