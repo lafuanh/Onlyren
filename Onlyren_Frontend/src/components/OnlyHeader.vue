@@ -32,7 +32,7 @@ const search = () => {
           <div class="flex items-center justify-center">
             <img src="@/assets/images/ss.jpg" alt="Workspace" class="w-[55px] h-[55px] py-2 px-2 object-cover" />
             <div class="flex-grow text-center">
-              <span class="text-3xl font-bold text-gray-800">ONLYREN</span>
+              <span class="text-3xl font-koulen font-bold text-gray-800">ONLYREN</span>
             </div>
           </div>
         </router-link>
