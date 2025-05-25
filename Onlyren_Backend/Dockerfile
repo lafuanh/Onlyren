@@ -2,36 +2,37 @@ FROM php:8.4-fpm
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip
-
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+    git curl libpng-dev libonig-dev libxml2-dev zip unzip \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /var/www/html
 
-# Copy application files
+# Copy composer files first
+COPY composer*.json ./
+
+# Install dependencies without scripts (to avoid artisan errors)
+RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
+
+# Copy all application files
 COPY . .
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Now run the scripts after all files are available
+RUN composer run-script post-autoload-dump
 
-# Fix permissions for Laravel
-RUN chown -R www-data:www-data /var/www/html/storage
-RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
-RUN chmod -R 775 /var/www/html/storage
-RUN chmod -R 775 /var/www/html/bootstrap/cache
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Expose port 9000 for PHP-FPM
+# Generate application key if needed
+RUN php artisan key:generate --no-interaction || true
+
+# Cache configuration for production
+RUN php artisan config:cache && \
+    php artisan route:cache && \
+    php artisan view:cache
+
 EXPOSE 9000
-
 CMD ["php-fpm"]
