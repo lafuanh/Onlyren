@@ -6,7 +6,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\PostController;
-use App\Http\Controllers\ReservationController;
+use App\Http\Controllers\Auth\ReservationController;
 
 // Public routes
 Route::post('/login', [LoginController::class, 'login']);
