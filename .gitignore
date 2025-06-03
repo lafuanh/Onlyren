@@ -24,3 +24,4 @@ yarn-error.log
 
 docker-compose.prod.yml
 docker-compose.registry.yml
+defaultserver.conf
