@@ -61,26 +61,22 @@
             >
               Cari Ruang Kerja
             </router-link>
+            <br><br>
+
           </div>
         </div>
       </div>
     </div>
 
     <!-- Footer -->
-    <footer class="bg-white border-t mt-8">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div class="flex items-center justify-center">
-          <p class="text-gray-500 text-sm">
-            © 2025 Onlyren. Semua hak dilindungi.
-          </p>
-        </div>
-      </div>
-    </footer>
+      <OnlyFooter />
+
   </div>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router'
 import OnlyHeader from '@/components/OnlyHeader.vue'
+import OnlyFooter from '@/components/OnlyFooter.vue';
 const router = useRouter()
 </script>

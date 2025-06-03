@@ -1,8 +1,3 @@
-// src/api/renter.js
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL
-
 export const fetchRenterProfile = async () => {
   try {
     const response = await axios.get(`${API_URL}/renter/profile`)
@@ -25,4 +20,19 @@ export const updateRenterProfile = async (profileData) => {
     console.error('Error updating renter profile:', error)
     throw error
   }
+}
+
+export const fetchRenterConversations = async (profileData) => {
+
+}
+
+export const fetchRenterOrders = async (profileData) => {
+
+}
+export const fetchRenterRooms = async (profileData) => {
+
+}
+
+export const logout = async (profileData) => {
+
 }

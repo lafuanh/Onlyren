@@ -15,7 +15,7 @@ export const fetchConversations = async () => {
 }
 
 // Fetch messages in a specific conversation
-export const fetchMessagesByConversation = async (conversationId) => {
+export const fetchConversationMessages = async (conversationId) => {
   try {
     const response = await axios.get(`${API_URL}/messages/conversations/${conversationId}`)
     return response.data
@@ -24,6 +24,17 @@ export const fetchMessagesByConversation = async (conversationId) => {
     throw error
   }
 }
+
+export const fetchUserConversations = async (conversationId) => {
+  try {
+    const response = await axios.get(`${API_URL}/messages/conversations/${conversationId}`)
+    return response.data
+  } catch (error) {
+    console.error('Error fetching messages:', error)
+    throw error
+  }
+}
+
 
 // Send a message in a conversation
 export const sendMessage = async (conversationId, messageData) => {

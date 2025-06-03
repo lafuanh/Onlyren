@@ -88,33 +88,33 @@ const routes = [
     path: '/profile',
     name: 'UserProfile',
     component: UserProfilePage,
-    beforeEnter: requireAuth // Protect the profile page from unauthorized users
+    //beforeEnter: requireAuth // Protect the profile page from unauthorized users
   },
   {
     path: '/renter/profile',
     name: 'RenterProfile',
     component: RenterProfilePage,
-    beforeEnter: requireRenterAuth // Protect the renter profile page from non-renter users
+   // beforeEnter: requireRenterAuth // Protect the renter profile page from non-renter users
   },
-  {
-    path: '/messages',
-    name: 'Messages',
-    component: MessagesPage,
-    beforeEnter: requireAuth // Protect messages page from non-authenticated users
-  },
-  {
-    path: '/renter/rooms/new',
-    name: 'NewRoom',
-    component: () => import('@/pages/NewRoomPage.vue'),
-    beforeEnter: requireRenterAuth // Protect this page from non-renter users
-  },
-  {
-    path: '/renter/rooms/:id/edit',
-    name: 'EditRoom',
-    component: () => import('@/pages/EditRoomPage.vue'),
-    beforeEnter: requireRenterAuth,
-    props: true
-  },
+  // {
+  //   path: '/messages',
+  //   name: 'Messages',
+  //   component: MessagesPage,
+  //   beforeEnter: requireAuth // Protect messages page from non-authenticated users
+  // },
+  // {
+  //   path: '/renter/rooms/new',
+  //   name: 'NewRoom',
+  //   component: () => import('@/pages/NewRoomPage.vue'),
+  //   beforeEnter: requireRenterAuth // Protect this page from non-renter users
+  // },
+  // {
+  //   path: '/renter/rooms/:id/edit',
+  //   name: 'EditRoom',
+  //   component: () => import('@/pages/EditRoomPage.vue'),
+  //   beforeEnter: requireRenterAuth,
+  //   props: true
+  // },
 
   // {
   //   path: '/reservations',

@@ -1,15 +1,11 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { 
-  fetchConversations, 
-  fetchMessagesByConversation, 
-  sendMessage 
-} from '@/api/messages'
+
 
 </script>
 
-<template>
+<template> 
   <div class="flex h-screen">
     <!-- Conversations List -->
     <div class="w-1/4 bg-gray-100 border-r p-4 overflow-y-auto">

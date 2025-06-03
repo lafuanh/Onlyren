@@ -1,5 +1,3 @@
-// tailwind.config.js
-
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -12,6 +10,10 @@ module.exports = {
         orange: {
           500: '#FF6B35', // Customize the orange color to match your design
         }
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'], // Default font family
+        koulen: ['Koulen', 'cursive'], // Koulen font for specific usage
       },
     },
   },

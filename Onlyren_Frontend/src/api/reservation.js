@@ -44,3 +44,7 @@ export const updateReservationStatus = async (reservationId, newStatus) => {
     throw error
   }
 }
+
+export const cancelUserReservation = async (reservationId, newStatus) => {
+  
+}

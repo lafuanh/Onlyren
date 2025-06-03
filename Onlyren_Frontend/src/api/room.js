@@ -85,3 +85,14 @@ export const fetchRenterRooms = async () => {
     throw error
   }
 }
+
+
+export const deleteRoom = async (id) => {
+  const response = await axios.delete(`/api/rooms/${id}`)
+  return response.data
+}
+
+export const editRoom = async (roomData) => {
+  const response = await axios.put(`/api/rooms/${roomData.id}`, roomData)
+  return response.data
+}

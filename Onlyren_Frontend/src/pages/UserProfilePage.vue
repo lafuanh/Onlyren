@@ -1,336 +1,244 @@
+<!-- UserProfile.vue -->
+<template>
+  <div class="min-h-screen bg-gray-50">
+    <OnlyHeader />
+
+    <div class="flex">
+      <!-- Sidebar -->
+      <div class="w-64 bg-white shadow-lg min-h-screen">
+        <div class="p-6">
+          <!-- User Profile Section -->
+          <div class="flex items-center mb-8">
+            <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold">
+              {{ getInitials(profile.name) }}
+            </div>
+            <div class="ml-3">
+              <h3 class="font-semibold text-gray-800">{{ profile.name || 'User' }}</h3>
+              <p class="text-sm text-gray-600">Akun</p>
+            </div>
+          </div>
+
+          <!-- Navigation Menu -->
+          <nav class="space-y-2">
+            <button 
+              @click="activeTab = 'profile'" 
+              :class="[
+                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors',
+                activeTab === 'profile' 
+                  ? 'bg-orange-100 text-orange-600 border-l-4 border-orange-600' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              ]"
+            >
+              <i class="fas fa-user mr-3"></i>Profil
+            </button>
+            <button 
+              @click="activeTab = 'reservations'" 
+              :class="[
+                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors',
+                activeTab === 'reservations' 
+                  ? 'bg-orange-100 text-orange-600 border-l-4 border-orange-600' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              ]"
+            >
+              <i class="fas fa-calendar-alt mr-3"></i>Reservasi
+            </button>
+            <button 
+              @click="activeTab = 'payments'" 
+              :class="[
+                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors',
+                activeTab === 'payments' 
+                  ? 'bg-orange-100 text-orange-600 border-l-4 border-orange-600' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              ]"
+            >
+              <i class="fas fa-credit-card mr-3"></i>Pembayaran
+            </button>
+            <button 
+              @click="activeTab = 'messages'" 
+              :class="[
+                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors',
+                activeTab === 'messages' 
+                  ? 'bg-orange-100 text-orange-600 border-l-4 border-orange-600' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              ]"
+            >
+              <i class="fas fa-comments mr-3"></i>Chat
+            </button>
+          </nav>
+
+          <!-- Logout Button -->
+          <div class="mt-8 pt-4 border-t border-gray-200">
+            <button 
+              @click="handleLogout"
+              class="w-full text-left px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <i class="fas fa-sign-out-alt mr-3"></i>Logout
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="flex-1 p-6">
+        <!-- Success/Error Messages -->
+        <div v-if="error" class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          <i class="fas fa-exclamation-circle mr-2"></i>{{ error }}
+        </div>
+        <div v-if="successMessage" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+          <i class="fas fa-check-circle mr-2"></i>{{ successMessage }}
+        </div>
+
+        <!-- Profile Tab -->
+        <div v-if="activeTab === 'profile'">
+          <ProfileForm :profile="profile" @update="handleProfileUpdate" />
+        </div>
+
+        <!-- Reservations Tab -->
+        <div v-if="activeTab === 'reservations'">
+          <UserReservations :reservations="reservations" @cancel="handleCancelReservation" />
+        </div>
+
+        <!-- Payments Tab -->
+        <div v-if="activeTab === 'payments'">
+          <UserPayments :payments="payments" @pay="handlePayment" />
+        </div>
+
+        <!-- Messages Tab -->
+        <div v-if="activeTab === 'messages'">
+          <UserMessages :conversations="conversations" @send="handleSendMessage" />
+        </div>
+      </div>
+    </div>
+
+    <OnlyFooter />
+  </div>
+</template>
+
 <script setup>
+import OnlyHeader from '@/components/OnlyHeader.vue'
+import OnlyFooter from '@/components/OnlyFooter.vue';
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchUserProfile, updateUserProfile } from '@/api/user'
-import { fetchUserReservations } from '@/api/reservation'
-import { logout } from '@/api/auth'
-import OnlyHeader from '@/components/OnlyHeader.vue'
+import ProfileForm from '@/components/ProfileForm.vue'
+import UserReservations from '@/components/UserReservations.vue'
+import UserPayments from '@/components/UserPayments.vue'
+import UserMessages from '@/components/UserMessages.vue'
+import { fetchUserProfile, fetchUserReservations, fetchUserPayments, fetchUserConversations, logout } from '@/api/user'
 
+const activeTab = ref('profile')
+const profile = ref({})
+const reservations = ref([])
+const payments = ref([])
+const conversations = ref([])
 
-// Profile state
-const profile = ref({
-  name: '',
-  email: '',
-  phone: '',
-  avatar: null
-})
-
-// Form state
-const isEditing = ref(false)
-const isLoading = ref(true)
 const error = ref(null)
 const successMessage = ref(null)
 
-// File upload
-const avatarFile = ref(null)
+const router = useRouter()
 
-// Reservations
-const reservations = ref([])
-const activeTab = ref('profile')
+const getInitials = (name) => {
+  if (!name) return 'U'
+  return name.split(' ').map(n => n[0]).join('').toUpperCase()
+}
 
-// Fetch user profile
-const loadUserProfile = async () => {
-  isLoading.value = true
+const showMessage = (message, type = 'success') => {
+  if (type === 'success') {
+    successMessage.value = message
+    error.value = null
+  } else {
+    error.value = message
+    successMessage.value = null
+  }
+  setTimeout(() => {
+    error.value = null
+    successMessage.value = null
+  }, 5000)
+}
+
+const loadProfile = async () => {
   try {
     profile.value = await fetchUserProfile()
   } catch (err) {
-    error.value = 'Failed to load profile'
-    console.error(err)
-  } finally {
-    isLoading.value = false
+    showMessage('Failed to load profile', 'error')
   }
 }
 
-// Load reservations
 const loadReservations = async () => {
   try {
     reservations.value = await fetchUserReservations()
   } catch (err) {
-    error.value = 'Failed to load reservations'
-    console.error(err)
+    showMessage('Failed to load reservations', 'error')
   }
 }
 
-// Update profile
-const saveProfile = async () => {
-  error.value = null
-  successMessage.value = null
-  
+const loadPayments = async () => {
   try {
-    // Prepare form data for upload
-    const formData = new FormData()
-    formData.append('name', profile.value.name)
-    formData.append('phone', profile.value.phone)
-    
-    if (avatarFile.value) {
-      formData.append('avatar', avatarFile.value)
-    }
-
-    await updateUserProfile(formData)
-    
-    successMessage.value = 'Profile updated successfully'
-    isEditing.value = false
-    
-    // Reload profile to get updated data
-    await loadUserProfile()
+    payments.value = await fetchUserPayments()
   } catch (err) {
-    error.value = 'Failed to update profile'
-    console.error(err)
+    showMessage('Failed to load payments', 'error')
   }
 }
 
-// Handle avatar upload
-const handleAvatarUpload = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    avatarFile.value = file
-    
-    // Create preview
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      profile.value.avatar = e.target.result
-    }
-    reader.readAsDataURL(file)
+const loadConversations = async () => {
+  try {
+    conversations.value = await fetchUserConversations()
+  } catch (err) {
+    showMessage('Failed to load conversations', 'error')
   }
 }
 
-// Logout
-const router = useRouter()
+const handleProfileUpdate = async (updatedProfile) => {
+  try {
+    profile.value = { ...profile.value, ...updatedProfile }
+    showMessage('Profile updated successfully')
+  } catch (err) {
+    showMessage('Failed to update profile', 'error')
+  }
+}
+
+const handleCancelReservation = async (reservationId) => {
+  try {
+    // API call to cancel reservation
+    await loadReservations()
+    showMessage('Reservation cancelled successfully')
+  } catch (err) {
+    showMessage('Failed to cancel reservation', 'error')
+  }
+}
+
+const handlePayment = async (paymentId) => {
+  try {
+    // API call to process payment
+    await loadPayments()
+    showMessage('Payment processed successfully')
+  } catch (err) {
+    showMessage('Failed to process payment', 'error')
+  }
+}
+
+const handleSendMessage = async (messageData) => {
+  try {
+    // API call to send message
+    await loadConversations()
+    showMessage('Message sent successfully')
+  } catch (err) {
+    showMessage('Failed to send message', 'error')
+  }
+}
+
 const handleLogout = async () => {
   try {
     await logout()
     router.push('/login')
   } catch (err) {
-    error.value = 'Logout failed'
-    console.error(err)
+    showMessage('Failed to logout', 'error')
   }
 }
 
-// Tab change handler
-const changeTab = (tab) => {
-  activeTab.value = tab
-  
-  // Load reservations when switching to reservations tab
-  if (tab === 'reservations') {
-    loadReservations()
-  }
-}
-
-// Format date
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-// Format currency
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR'
-  }).format(value)
-}
-
-// Lifecycle hook
-onMounted(loadUserProfile)
+onMounted(() => {
+  loadProfile()
+  loadReservations()
+  loadPayments()
+  loadConversations()
+})
 </script>
-
-<template>
-      <!-- Header -->
-    <OnlyHeader />
-
-  <div class="container mx-auto px-4 py-6">
-    <!-- Loading State -->
-    <div v-if="isLoading" class="text-center py-6">
-      Loading profile...
-    </div>
-
-    <!-- Error State -->
-    <div v-if="error" class="bg-red-100 text-red-800 p-4 rounded-lg mb-4">
-      {{ error }}
-    </div>
-
-    <!-- Success Message -->
-    <div v-if="successMessage" class="bg-green-100 text-green-800 p-4 rounded-lg mb-4">
-      {{ successMessage }}
-    </div>
-
-    <!-- Tabs Navigation -->
-    <div class="mb-6 border-b">
-      <nav class="flex space-x-4">
-        <button 
-          @click="changeTab('profile')"
-          :class="{
-            'pb-2 border-b-2': true,
-            'border-blue-500 text-blue-600': activeTab === 'profile',
-            'border-transparent text-gray-500': activeTab !== 'profile'
-          }"
-        >
-          Profile
-        </button>
-        <button 
-          @click="changeTab('reservations')"
-          :class="{
-            'pb-2 border-b-2': true,
-            'border-blue-500 text-blue-600': activeTab === 'reservations',
-            'border-transparent text-gray-500': activeTab !== 'reservations'
-          }"
-        >
-          My Reservations
-        </button>
-      </nav>
-    </div>
-
-    <!-- Profile Tab -->
-    <div v-if="activeTab === 'profile'" class="bg-white shadow-md rounded-lg p-6">
-      <!-- Avatar Section -->
-      <div class="flex items-center mb-6">
-        <div class="mr-6">
-          <img 
-            :src="profile.avatar || '/default-avatar.png'"
-            alt="Profile Avatar"
-            class="w-24 h-24 rounded-full object-cover"
-          />
-        </div>
-        
-        <!-- Avatar Upload -->
-        <div>
-          <input 
-            type="file" 
-            ref="avatarInput"
-            @change="handleAvatarUpload"
-            accept="image/*"
-            class="hidden"
-          />
-          <button 
-            @click="$refs.avatarInput.click()"
-            class="px-4 py-2 bg-blue-500 text-white rounded-lg"
-          >
-            Change Avatar
-          </button>
-        </div>
-      </div>
-
-      <!-- Profile Form -->
-      <form @submit.prevent="saveProfile">
-        <div class="grid md:grid-cols-2 gap-4">
-          <!-- Name Input -->
-          <div>
-            <label class="block mb-2">Name</label>
-            <input 
-              v-model="profile.name"
-              :disabled="!isEditing"
-              type="text"
-              class="w-full px-3 py-2 border rounded-lg"
-              :class="{ 'bg-gray-100': !isEditing }"
-            />
-          </div>
-
-          <!-- Email Input (Read Only) -->
-          <div>
-            <label class="block mb-2">Email</label>
-            <input 
-              v-model="profile.email"
-              type="email"
-              disabled
-              class="w-full px-3 py-2 border rounded-lg bg-gray-100"
-            />
-          </div>
-
-          <!-- Phone Input -->
-          <div>
-            <label class="block mb-2">Phone Number</label>
-            <input 
-              v-model="profile.phone"
-              :disabled="!isEditing"
-              type="tel"
-              class="w-full px-3 py-2 border rounded-lg"
-              :class="{ 'bg-gray-100': !isEditing }"
-            />
-          </div>
-        </div>
-
-        <!-- Edit/Save Buttons -->
-        <div class="mt-6 flex space-x-4">
-          <button 
-            v-if="!isEditing"
-            type="button"
-            @click="isEditing = true"
-            class="px-4 py-2 bg-blue-500 text-white rounded-lg"
-          >
-            Edit Profile
-          </button>
-          <template v-else>
-            <button 
-              type="submit"
-              class="px-4 py-2 bg-green-500 text-white rounded-lg"
-            >
-              Save Changes
-            </button>
-            <button 
-              type="button"
-              @click="isEditing = false"
-              class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg"
-            >
-              Cancel
-            </button>
-          </template>
-        </div>
-      </form>
-
-      <!-- Logout Button -->
-      <div class="mt-6">
-        <button 
-          @click="handleLogout"
-          class="px-4 py-2 bg-red-500 text-white rounded-lg"
-        >
-          Logout
-        </button>
-      </div>
-    </div>
-
-    <!-- Reservations Tab -->
-    <div v-if="activeTab === 'reservations'" class="bg-white shadow-md rounded-lg p-6">
-      <h2 class="text-xl font-semibold mb-4">My Reservations</h2>
-
-      <!-- No Reservations State -->
-      <div v-if="reservations.length === 0" class="text-center py-6 text-gray-500">
-        You have no current reservations
-      </div>
-
-      <!-- Reservations List -->
-      <div v-else class="space-y-4">
-        <div 
-          v-for="reservation in reservations" 
-          :key="reservation.id" 
-          class="border rounded-lg p-4 flex justify-between items-center"
-        >
-          <div>
-            <h3 class="font-semibold">{{ reservation.room.name }}</h3>
-            <p class="text-gray-600">
-              {{ formatDate(reservation.date) }} 
-              · {{ reservation.start_time }} - {{ reservation.end_time }}
-            </p>
-          </div>
-          <div class="text-right">
-            <p class="font-bold">
-              {{ formatCurrency(reservation.total_price) }}
-            </p>
-            <span 
-              :class="{
-                'px-2 py-1 rounded-full text-sm': true,
-                'bg-green-100 text-green-800': reservation.status === 'confirmed',
-                'bg-yellow-100 text-yellow-800': reservation.status === 'pending',
-                'bg-red-100 text-red-800': reservation.status === 'cancelled'
-              }"
-            >
-              {{ reservation.status }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>

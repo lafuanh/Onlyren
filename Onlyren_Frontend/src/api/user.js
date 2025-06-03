@@ -1,28 +1,26 @@
-// src/api/user.js
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL
-
 export const fetchUserProfile = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/user/profile`)
-    return response.data
-  } catch (error) {
-    console.error('Error fetching user profile:', error)
-    throw error
-  }
+  const response = await axios.get('/api/user/profile')
+  return response.data
 }
 
-export const updateUserProfile = async (profileData) => {
-  try {
-    const response = await axios.post(`${API_URL}/user/profile`, profileData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    return response.data
-  } catch (error) {
-    console.error('Error updating user profile:', error)
-    throw error
-  }
+export const fetchUserReservations = async () => {
+  const response = await axios.get('/api/user/reservations')
+  return response.data
+}
+
+export const fetchUserPayments = async () => {
+  const response = await axios.get('/api/user/payments')
+  return response.data
+}
+
+export const fetchUserConversations = async () => {
+  const response = await axios.get('/api/user/conversations')
+  return response.data
+}
+
+export const logout = async () => {
+  const response = await axios.post('/api/auth/logout')
+  return response.data
 }
