@@ -6,7 +6,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\PostController;
-use App\Http\Controllers\NewsController;
+use App\Http\Controllers\Auth\ReservationController;
 
 
 // Public routes
@@ -36,4 +36,10 @@ Route::post('/test-post', function (\Illuminate\Http\Request $request) {
     return response()->json([
         'data' => $request->all()
     ]);
+});
+
+// ... existing code ...
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('reservations', ReservationController::class);
 });
