@@ -7,7 +7,7 @@ import SearchPage from '@/pages/SearchPage.vue'
 import RoomDetailPage from '@/pages/RoomDetail.vue'
 import UserProfilePage from '@/pages/UserProfilePage.vue'
 import RenterProfilePage from '@/pages/RenterProfilePage.vue'
-import MessagesPage from '@/pages/MessagesPage.vue'
+import AdminProfilePage from '@/pages/AdminProfilePage.vue'
 
 import AuthPages from '@/pages/AuthPages.vue' // Import AuthPages.vue
 
@@ -94,6 +94,12 @@ const routes = [
     path: '/renter/profile',
     name: 'RenterProfile',
     component: RenterProfilePage,
+   // beforeEnter: requireRenterAuth // Protect the renter profile page from non-renter users
+  },
+    {
+    path: '/admin',
+    name: 'AdminProfile',
+    component: AdminProfilePage,
    // beforeEnter: requireRenterAuth // Protect the renter profile page from non-renter users
   },
   // {
