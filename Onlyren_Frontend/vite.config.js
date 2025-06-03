@@ -15,7 +15,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8080', // Your Laravel backend
+        target: 'http://127.0.0.1:8081', // Your Laravel backend
         changeOrigin: true,
         secure: false,
       }

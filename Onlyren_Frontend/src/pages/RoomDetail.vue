@@ -22,6 +22,7 @@ const reservationForm = ref({
 const reservationError = ref(null)
 
 // Route and navigation
+
 const route = useRoute()
 const router = useRouter()
 
@@ -31,7 +32,7 @@ const loadRoomDetails = async () => {
   try {
     room.value = await fetchRoomDetails(route.params.id)
   } catch (err) {
-    error.value = 'Failed to load room details'
+    reservationError.value = 'Failed to load room details'
     console.error(err)
   } finally {
     isLoading.value = false
@@ -42,11 +43,16 @@ const loadRoomDetails = async () => {
 const submitReservation = async () => {
   reservationError.value = null
   try {
-    await createReservation({
+    const reservation = await createReservation({
       room_id: route.params.id,
       ...reservationForm.value
     })
-    router.push('/reservations/success')
+    
+    // Confirm the reservation after creation
+    await confirmReservation(reservation.id)
+    
+    // Redirect to the payment page
+    router.push(`/payments/${reservation.id}`)
   } catch (err) {
     reservationError.value = 'Reservation failed. Please try again.'
     console.error(err)
@@ -64,6 +70,7 @@ const formatCurrency = (value) => {
   }).format(value)
 }
 </script>
+
 
 <template>
   <!-- Header -->
