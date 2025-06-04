@@ -69,10 +69,12 @@
           <!-- Logout Button -->
           <div class="mt-8 pt-4 border-t border-gray-200">
             <button 
-              @click="handleLogout"
-              class="w-full text-left px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-colors"
+              @click="confirmLogout"
+              :disabled="isLoggingOut"
+              class="w-full text-left px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
             >
-              <i class="fas fa-sign-out-alt mr-3"></i>Logout
+              <i class="fas fa-sign-out-alt mr-3"></i>
+              {{ isLoggingOut ? 'Logging out...' : 'Logout' }}
             </button>
           </div>
         </div>
@@ -120,6 +122,30 @@
       </div>
     </div>
 
+    <!-- Logout Confirmation Modal -->
+    <div v-if="showLogoutModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Confirm Logout</h3>
+        <p class="text-gray-600 mb-6">Are you sure you want to logout? You will be redirected to the login page.</p>
+        <div class="flex space-x-3">
+          <button 
+            @click="handleLogout"
+            :disabled="isLoggingOut"
+            class="flex-1 bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 transition-colors disabled:opacity-50"
+          >
+            {{ isLoggingOut ? 'Logging out...' : 'Yes, Logout' }}
+          </button>
+          <button 
+            @click="cancelLogout"
+            :disabled="isLoggingOut"
+            class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded hover:bg-gray-400 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
     <OnlyFooter />
   </div>
 </template>
@@ -137,9 +163,9 @@ import {
   fetchRenterProfile, 
   fetchRenterRooms, 
   fetchRenterOrders, 
-  fetchRenterConversations,
-  logout 
+  fetchRenterConversations
 } from '@/api/renter'
+import { logout } from '@/api/auth' // Import logout from auth API
 
 const activeTab = ref('profile')
 const profile = ref({})
@@ -149,6 +175,8 @@ const conversations = ref([])
 
 const error = ref(null)
 const successMessage = ref(null)
+const showLogoutModal = ref(false)
+const isLoggingOut = ref(false)
 
 const router = useRouter()
 
@@ -275,12 +303,63 @@ const handleSendMessage = async (messageData) => {
   }
 }
 
+// Show logout confirmation modal
+const confirmLogout = () => {
+  showLogoutModal.value = true
+}
+
+// Cancel logout and hide modal
+const cancelLogout = () => {
+  showLogoutModal.value = false
+}
+
+// Handle actual logout
 const handleLogout = async () => {
+  isLoggingOut.value = true
+  
   try {
+    console.log('Attempting to logout...')
+    
+    // Call logout API
     await logout()
-    router.push('/login')
+    
+    console.log('Logout successful')
+    
+    // Clear any stored tokens/session data
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
+    
+    // Show success message briefly
+    showMessage('Logged out successfully. Redirecting...', 'success')
+    
+    // Hide modal
+    showLogoutModal.value = false
+    
+    // Redirect to login page after brief delay
+    setTimeout(() => {
+      router.push('/login')
+    }, 1500)
+    
   } catch (err) {
-    showMessage('Failed to logout', 'error')
+    console.error('Logout failed:', err)
+    
+    // Even if logout API fails, still clear local data and redirect
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
+    
+    showMessage('Logout completed. Redirecting...', 'success')
+    showLogoutModal.value = false
+    
+    setTimeout(() => {
+      router.push('/login')
+    }, 1500)
+    
+  } finally {
+    isLoggingOut.value = false
   }
 }
 

@@ -3,6 +3,10 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\RenterMiddleware;
+use App\Http\Middleware\UserMiddleware;
+use App\Http\Middleware\AdminOrRenterMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,7 +17,6 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api', // This ensures /api/ prefix
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Add any middleware here
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
