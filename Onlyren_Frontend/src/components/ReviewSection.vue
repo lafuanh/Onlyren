@@ -20,7 +20,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { fetchReviews } from '@/api/room'
+//import { fetchReviews } from '@/api/room'
 
 const props = defineProps({
   roomId: {

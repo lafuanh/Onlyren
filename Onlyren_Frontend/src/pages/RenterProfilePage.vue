@@ -1,4 +1,3 @@
-<!-- RenterProfile.vue -->
 <template>
   <div class="min-h-screen bg-gray-50">
     <OnlyHeader />
@@ -23,10 +22,8 @@
             <button 
               @click="activeTab = 'profile'" 
               :class="[
-                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors',
-                activeTab === 'profile' 
-                  ? 'bg-blue-100 text-orange-600 border-l-4 border-orange-600' 
-                  : 'text-gray-600 hover:bg-gray-100'
+                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center',
+                activeTab === 'profile' ? 'bg-blue-100 text-orange-600 border-l-4 border-orange-600' : 'text-gray-600 hover:bg-gray-100'
               ]"
             >
               <i class="fas fa-user mr-3"></i>Profil
@@ -34,10 +31,8 @@
             <button 
               @click="activeTab = 'rooms'" 
               :class="[
-                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors',
-                activeTab === 'rooms' 
-                  ? 'bg-blue-100 text-orange-600 border-l-4 border-orange-600' 
-                  : 'text-gray-600 hover:bg-gray-100'
+                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center',
+                activeTab === 'rooms' ? 'bg-blue-100 text-orange-600 border-l-4 border-orange-600' : 'text-gray-600 hover:bg-gray-100'
               ]"
             >
               <i class="fas fa-building mr-3"></i>Ruangan
@@ -45,10 +40,8 @@
             <button 
               @click="activeTab = 'orders'" 
               :class="[
-                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors',
-                activeTab === 'orders' 
-                  ? 'bg-blue-100 text-orange-600 border-l-4 border-orange-600' 
-                  : 'text-gray-600 hover:bg-gray-100'
+                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center',
+                activeTab === 'orders' ? 'bg-blue-100 text-orange-600 border-l-4 border-orange-600' : 'text-gray-600 hover:bg-gray-100'
               ]"
             >
               <i class="fas fa-clipboard-list mr-3"></i>Pesanan
@@ -56,10 +49,8 @@
             <button 
               @click="activeTab = 'messages'" 
               :class="[
-                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors',
-                activeTab === 'messages' 
-                  ? 'bg-blue-100 text-orange-600 border-l-4 border-orange-600' 
-                  : 'text-gray-600 hover:bg-gray-100'
+                'w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center',
+                activeTab === 'messages' ? 'bg-blue-100 text-orange-600 border-l-4 border-orange-600' : 'text-gray-600 hover:bg-gray-100'
               ]"
             >
               <i class="fas fa-comments mr-3"></i>Chat
@@ -71,7 +62,7 @@
             <button 
               @click="confirmLogout"
               :disabled="isLoggingOut"
-              class="w-full text-left px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              class="w-full text-left px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center"
             >
               <i class="fas fa-sign-out-alt mr-3"></i>
               {{ isLoggingOut ? 'Logging out...' : 'Logout' }}
@@ -151,222 +142,205 @@
 </template>
 
 <script setup>
-import OnlyHeader from '@/components/OnlyHeader.vue'
-import OnlyFooter from '@/components/OnlyFooter.vue';
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import RenterProfileForm from '@/components/RenterProfileForm.vue'
-import RoomManagement from '@/components/RoomManagement.vue'
-import OrderManagement from '@/components/OrderManagement.vue'
-import RenterMessages from '@/components/RenterMessages.vue'
+// Import necessary components and API methods
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { 
   fetchRenterProfile, 
+  updateRenterProfile,
   fetchRenterRooms, 
+  createRoom,
+  updateRoom,
+  deleteRoom,
   fetchRenterOrders, 
-  fetchRenterConversations
-} from '@/api/renter'
-import { logout } from '@/api/auth' // Import logout from auth API
+  approveOrder,
+  rejectOrder,
+  completeOrder,
+  fetchRenterConversations,
+  sendMessage,
+  logout 
+} from '@/api/renter';
+import OnlyHeader from '@/components/OnlyHeader.vue';
+import OnlyFooter from '@/components/OnlyFooter.vue';
+import RenterProfileForm from '@/components/RenterProfileForm.vue';
+import RoomManagement from '@/components/RoomManagement.vue';
+import OrderManagement from '@/components/OrderManagement.vue';
+import RenterMessages from '@/components/RenterMessages.vue';
 
-const activeTab = ref('profile')
-const profile = ref({})
-const rooms = ref([])
-const orders = ref([])
-const conversations = ref([])
+const activeTab = ref('profile');
+const profile = ref({});
+const rooms = ref([]);
+const orders = ref([]);
+const conversations = ref([]);
 
-const error = ref(null)
-const successMessage = ref(null)
-const showLogoutModal = ref(false)
-const isLoggingOut = ref(false)
+const error = ref(null);
+const successMessage = ref(null);
+const showLogoutModal = ref(false);
+const isLoggingOut = ref(false);
 
-const router = useRouter()
+const router = useRouter();
 
 const getInitials = (name) => {
-  if (!name) return 'R'
-  return name.split(' ').map(n => n[0]).join('').toUpperCase()
-}
+  if (!name) return 'R';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase();
+};
 
 const showMessage = (message, type = 'success') => {
   if (type === 'success') {
-    successMessage.value = message
-    error.value = null
+    successMessage.value = message;
+    error.value = null;
   } else {
-    error.value = message
-    successMessage.value = null
+    error.value = message;
+    successMessage.value = null;
   }
   setTimeout(() => {
-    error.value = null
-    successMessage.value = null
-  }, 5000)
-}
+    error.value = null;
+    successMessage.value = null;
+  }, 5000);
+};
 
 const loadProfile = async () => {
   try {
-    profile.value = await fetchRenterProfile()
+    profile.value = await fetchRenterProfile();
   } catch (err) {
-    showMessage('Failed to load profile', 'error')
+    showMessage(err.message || 'Failed to load profile', 'error');
   }
-}
+};
 
 const loadRooms = async () => {
   try {
-    rooms.value = await fetchRenterRooms()
+    rooms.value = await fetchRenterRooms();
   } catch (err) {
-    showMessage('Failed to load rooms', 'error')
+    showMessage(err.message || 'Failed to load rooms', 'error');
   }
-}
+};
 
 const loadOrders = async () => {
   try {
-    orders.value = await fetchRenterOrders()
+    orders.value = await fetchRenterOrders();
   } catch (err) {
-    showMessage('Failed to load orders', 'error')
+    showMessage(err.message || 'Failed to load orders', 'error');
   }
-}
+};
 
 const loadConversations = async () => {
   try {
-    conversations.value = await fetchRenterConversations()
+    conversations.value = await fetchRenterConversations();
   } catch (err) {
-    showMessage('Failed to load conversations', 'error')
+    showMessage(err.message || 'Failed to load conversations', 'error');
   }
-}
+};
 
+// Profile update handler - now properly aligned with API
 const handleProfileUpdate = async (updatedProfile) => {
   try {
-    profile.value = { ...profile.value, ...updatedProfile }
-    showMessage('Profile updated successfully')
+    const result = await updateRenterProfile(updatedProfile);
+    profile.value = { ...profile.value, ...result };
+    showMessage('Profile updated successfully');
   } catch (err) {
-    showMessage('Failed to update profile', 'error')
+    showMessage(err.message || 'Failed to update profile', 'error');
   }
-}
+};
 
+// Room management event handlers - now properly aligned with API
 const handleAddRoom = async (roomData) => {
   try {
-    await loadRooms()
-    showMessage('Room added successfully')
+    await createRoom(roomData);
+    await loadRooms(); // Refresh the rooms list
+    showMessage('Room added successfully');
   } catch (err) {
-    showMessage('Failed to add room', 'error')
+    showMessage(err.message || 'Failed to add room', 'error');
   }
-}
+};
 
 const handleEditRoom = async (roomData) => {
   try {
-    await loadRooms()
-    showMessage('Room updated successfully')
+    await updateRoom(roomData.id, roomData);
+    await loadRooms(); // Refresh the rooms list
+    showMessage('Room updated successfully');
   } catch (err) {
-    showMessage('Failed to update room', 'error')
+    showMessage(err.message || 'Failed to update room', 'error');
   }
-}
+};
 
 const handleDeleteRoom = async (roomId) => {
   try {
-    await loadRooms()
-    showMessage('Room deleted successfully')
+    await deleteRoom(roomId);
+    await loadRooms(); // Refresh the rooms list
+    showMessage('Room deleted successfully');
   } catch (err) {
-    showMessage('Failed to delete room', 'error')
+    showMessage(err.message || 'Failed to delete room', 'error');
   }
-}
+};
 
+// Order management event handlers - now properly aligned with API
 const handleApproveOrder = async (orderId) => {
   try {
-    await loadOrders()
-    showMessage('Order approved successfully')
+    await approveOrder(orderId);
+    await loadOrders(); // Refresh the orders list
+    showMessage('Order approved successfully');
   } catch (err) {
-    showMessage('Failed to approve order', 'error')
+    showMessage(err.message || 'Failed to approve order', 'error');
   }
-}
+};
 
-const handleRejectOrder = async (orderId) => {
+const handleRejectOrder = async (orderId, reason = '') => {
   try {
-    await loadOrders()
-    showMessage('Order rejected successfully')
+    await rejectOrder(orderId, reason);
+    await loadOrders(); // Refresh the orders list
+    showMessage('Order rejected successfully');
   } catch (err) {
-    showMessage('Failed to reject order', 'error')
+    showMessage(err.message || 'Failed to reject order', 'error');
   }
-}
+};
 
 const handleCompleteOrder = async (orderId) => {
   try {
-    await loadOrders()
-    showMessage('Order completed successfully')
+    await completeOrder(orderId);
+    await loadOrders(); // Refresh the orders list
+    showMessage('Order completed successfully');
   } catch (err) {
-    showMessage('Failed to complete order', 'error')
+    showMessage(err.message || 'Failed to complete order', 'error');
   }
-}
+};
 
+// Message handling - now properly aligned with API
 const handleSendMessage = async (messageData) => {
   try {
-    await loadConversations()
-    showMessage('Message sent successfully')
+    await sendMessage(messageData);
+    await loadConversations(); // Refresh conversations
+    showMessage('Message sent successfully');
   } catch (err) {
-    showMessage('Failed to send message', 'error')
+    showMessage(err.message || 'Failed to send message', 'error');
   }
-}
+};
 
-// Show logout confirmation modal
+// Logout functionality - now properly aligned with API
 const confirmLogout = () => {
-  showLogoutModal.value = true
-}
+  showLogoutModal.value = true;
+};
 
-// Cancel logout and hide modal
 const cancelLogout = () => {
-  showLogoutModal.value = false
-}
+  showLogoutModal.value = false;
+};
 
-// Handle actual logout
 const handleLogout = async () => {
-  isLoggingOut.value = true
-  
+  isLoggingOut.value = true;
   try {
-    console.log('Attempting to logout...')
-    
-    // Call logout API
-    await logout()
-    
-    console.log('Logout successful')
-    
-    // Clear any stored tokens/session data
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    sessionStorage.removeItem('token')
-    sessionStorage.removeItem('user')
-    
-    // Show success message briefly
-    showMessage('Logged out successfully. Redirecting...', 'success')
-    
-    // Hide modal
-    showLogoutModal.value = false
-    
-    // Redirect to login page after brief delay
-    setTimeout(() => {
-      router.push('/login')
-    }, 1500)
-    
+    await logout();
+    router.push('/login');
   } catch (err) {
-    console.error('Logout failed:', err)
-    
-    // Even if logout API fails, still clear local data and redirect
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    sessionStorage.removeItem('token')
-    sessionStorage.removeItem('user')
-    
-    showMessage('Logout completed. Redirecting...', 'success')
-    showLogoutModal.value = false
-    
-    setTimeout(() => {
-      router.push('/login')
-    }, 1500)
-    
+    showMessage(err.message || 'Failed to logout', 'error');
   } finally {
-    isLoggingOut.value = false
+    isLoggingOut.value = false;
+    showLogoutModal.value = false;
   }
-}
+};
 
 onMounted(() => {
-  loadProfile()
-  loadRooms()
-  loadOrders()
-  loadConversations()
-})
+  loadProfile();
+  loadRooms();
+  loadOrders();
+  loadConversations();
+});
 </script>

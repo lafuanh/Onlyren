@@ -1,5 +1,3 @@
-
-<!-- RoomManagement.vue -->
 <template>
   <div class="space-y-6">
     <!-- Header with Add Button -->
@@ -7,7 +5,7 @@
       <h2 class="text-2xl font-bold text-gray-800">Manajemen Ruangan</h2>
       <button 
         @click="showAddModal = true"
-        class="px-4 py-2 bg-orange-500 text-white rounded-lg orange:bg-blue-600 transition-colors"
+        class="px-4 py-2 bg-orange-500 text-white rounded-lg transition-colors"
       >
         <i class="fas fa-plus mr-2"></i>Tambah Ruangan
       </button>
@@ -94,7 +92,7 @@
                   v-model="roomForm.name"
                   type="text" 
                   required
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               
@@ -104,7 +102,7 @@
                   v-model.number="roomForm.capacity"
                   type="number" 
                   required
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               
@@ -114,7 +112,7 @@
                   v-model.number="roomForm.pricePerHour"
                   type="number" 
                   required
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               
@@ -124,7 +122,7 @@
                   v-model="roomForm.location"
                   type="text" 
                   required
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -134,7 +132,7 @@
               <textarea 
                 v-model="roomForm.description"
                 rows="3"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               ></textarea>
             </div>
             
@@ -144,7 +142,7 @@
                 v-model="facilitiesInput"
                 type="text" 
                 placeholder="Pisahkan dengan koma (AC, WiFi, Proyektor)"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
             
@@ -178,6 +176,7 @@
     </div>
   </div>
 </template>
+
 
 <script setup>
 import { ref, computed } from 'vue'
