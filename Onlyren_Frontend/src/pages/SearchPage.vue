@@ -1,182 +1,3 @@
-<script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import RoomCard from '@/components/RoomCard.vue'
-import { fetchRooms } from '@/api/room'
-import OnlyFooter from '@/components/OnlyFooter.vue'
-import OnlyHeader from '@/components/OnlyHeader.vue'
-
-// Search and filter state
-const searchQuery = ref('')
-const rooms = ref([])
-const filters = ref({
-  type: '',
-  priceRange: [0, 1000000],
-  amenities: [],
-  period: 'Harian' // Default to daily
-})
-
-// Pagination
-const currentPage = ref(1)
-const totalPages = ref(1)
-const totalResults = ref(0)
-
-// Loading and error states
-const isLoading = ref(false)
-const error = ref(null)
-
-// Auth state (you'll need to implement proper auth)
-const isAuthenticated = ref(false)
-
-// Router
-const router = useRouter()
-const route = useRoute()
-
-// Computed property for display results count
-const displayResultsCount = computed(() => {
-  return rooms.value.length
-})
-
-// Search and filter methods
-const performSearch = async () => {
-  if (!searchQuery.value || searchQuery.value.trim() === '') {
-    // If search is empty, just return without making API call
-    return
-  }
-  
-  isLoading.value = true
-  error.value = null
-  
-  try {
-    const searchParams = {
-      query: searchQuery.value.trim(),
-      type: filters.value.type,
-      priceRange: filters.value.priceRange,
-      amenities: filters.value.amenities,
-      period: filters.value.period,
-      page: currentPage.value,
-      per_page: 12
-    }
-    
-    const response = await fetchRooms(searchParams)
-    
-    // Handle response safely
-    if (response && response.data) {
-      rooms.value = response.data
-      totalPages.value = response.meta?.last_page || 1
-      totalResults.value = response.meta?.total || response.data.length
-    } else {
-      rooms.value = []
-      totalPages.value = 1
-      totalResults.value = 0
-    }
-    
-  } catch (err) {
-    console.error('Search error:', err)
-    error.value = err.message || 'Failed to fetch rooms'
-    rooms.value = []
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Filter methods
-const applyFilters = async () => {
-  currentPage.value = 1
-  await performSearch()
-}
-
-const resetFilters = async () => {
-  filters.value = {
-    type: '',
-    priceRange: [0, 1000000],
-    amenities: [],
-    period: 'Harian'
-  }
-  currentPage.value = 1
-  await performSearch()
-}
-
-// Pagination
-const changePage = async (page) => {
-  if (page !== currentPage.value && page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-    await performSearch()
-  }
-}
-
-// Navigate to search page or perform search
-const handleSearch = async () => {
-  if (!searchQuery.value || searchQuery.value.trim() === '') {
-    return
-  }
-
-  // Reset to first page when doing new search
-  currentPage.value = 1
-  
-  if (route.name !== 'Search') {
-    // Navigate to search page with query
-    await router.push({ 
-      name: 'Search', 
-      query: { query: searchQuery.value.trim() } 
-    })
-  } else {
-    // Perform search if already on search page
-    if (!isLoading.value) {
-      await performSearch()
-    }
-  }
-}
-
-// Navigate to room detail
-const goToRoomDetail = (roomId) => {
-  if (roomId) {
-    router.push({ name: 'RoomDetail', params: { id: roomId } })
-  }
-}
-
-// Handle Enter key on search input
-const handleSearchKeydown = (event) => {
-  if (event.key === 'Enter') {
-    handleSearch()
-  }
-}
-
-// Auth methods (implement based on your auth system)
-const logout = () => {
-  // Clear auth token
-  localStorage.removeItem('auth_token')
-  sessionStorage.removeItem('auth_token')
-  isAuthenticated.value = false
-  
-  // Redirect to home or login
-  router.push('/')
-}
-
-// Check authentication status
-const checkAuth = () => {
-  const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token')
-  isAuthenticated.value = !!token
-}
-
-// Price formatting helper
-const formatPrice = (price) => {
-  if (!price) return '50.000'
-  return new Intl.NumberFormat('id-ID').format(price)
-}
-
-// Initial load
-onMounted(async () => {
-  checkAuth()
-  
-  // If there's a query in URL, perform search
-  if (route.query.query) {
-    searchQuery.value = route.query.query
-    await performSearch()
-  }
-})
-</script>
-
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
@@ -246,7 +67,6 @@ onMounted(async () => {
             </svg>
           </router-link>
 
-          <!-- Conditionally render Login or User Profile link -->
           <template v-if="!isAuthenticated">
             <router-link 
               to="/login" 
@@ -280,11 +100,29 @@ onMounted(async () => {
         <!-- Sidebar Filters -->
         <div class="w-64 flex-shrink-0">
           <div class="bg-white rounded-lg shadow-sm p-6 sticky top-6">
+            <!-- Debug Info -->
+            <div class="mb-4 p-2 bg-gray-100 rounded text-xs" v-if="showDebug">
+              <p>Rooms count: {{ rooms.length }}</p>
+              <p>Total results: {{ totalResults }}</p>
+              <p>Loading: {{ isLoading }}</p>
+              <p>Error: {{ error }}</p>
+              <p>Search query: {{ searchQuery }}</p>
+              <p>Has searched: {{ hasSearched }}</p>
+            </div>
+
+            <!-- Test Button -->
+            <button 
+              @click="testWithMockData" 
+              class="w-full mb-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+            >
+              Test with Mock Data
+            </button>
+
             <!-- Location Filter -->
             <div class="mb-6">
               <h3 class="font-semibold text-gray-900 mb-3">Lokasi</h3>
               <input 
-                v-model="searchQuery"
+                v-model="locationFilter"
                 type="text" 
                 placeholder="Semarang"
                 class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500"
@@ -366,9 +204,10 @@ onMounted(async () => {
         <!-- Main Content Area -->
         <div class="flex-1">
           <!-- Results Header -->
-          <div class="mb-4" v-if="searchQuery">
+          <div class="mb-4" v-if="searchQuery || hasSearched">
             <p class="text-gray-600">
-              Menampilkan {{ displayResultsCount }} dari {{ totalResults }} hasil untuk "{{ searchQuery }}"
+              Menampilkan {{ displayResultsCount }} dari {{ totalResults }} hasil
+              <span v-if="searchQuery">untuk "{{ searchQuery }}"</span>
             </p>
           </div>
 
@@ -382,13 +221,19 @@ onMounted(async () => {
           <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg mb-4">
             <p class="font-medium">Terjadi kesalahan:</p>
             <p class="text-sm mt-1">{{ error }}</p>
+            <button 
+              @click="retrySearch" 
+              class="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            >
+              Coba Lagi
+            </button>
           </div>
 
           <!-- Rooms Grid -->
-          <div v-else-if="rooms.length" class="space-y-4">
+          <div v-else-if="rooms && rooms.length > 0" class="space-y-4">
             <div 
               v-for="room in rooms" 
-              :key="room.id"
+              :key="room.id || room.name"
               class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               @click="goToRoomDetail(room.id)"
             >
@@ -400,7 +245,7 @@ onMounted(async () => {
                     :src="room.image || room.featured_image" 
                     :alt="room.name || 'Room image'"
                     class="w-full h-full object-cover"
-                    @error="$event.target.style.display = 'none'"
+                    @error="handleImageError"
                   />
                   <div 
                     v-else 
@@ -447,7 +292,7 @@ onMounted(async () => {
           </div>
 
           <!-- No Rooms State -->
-          <div v-else-if="searchQuery" class="text-center py-12">
+          <div v-else-if="hasSearched" class="text-center py-12">
             <div class="text-gray-400 mb-4">
               <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0V9a2 2 0 012-2h4a2 2 0 012 2v12"></path>
@@ -507,18 +352,330 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
-/* Custom radio button styling */
-input[type="radio"] {
-  accent-color: #f97316; /* orange-500 */
+<script setup>
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { fetchRooms } from '@/api/room'
+import OnlyFooter from '@/components/OnlyFooter.vue'
+
+// Search and filter state
+const searchQuery = ref('')
+const locationFilter = ref('')
+const rooms = ref([])
+const hasSearched = ref(false)
+const showDebug = ref(true) // Set to false in production
+
+const filters = ref({
+  type: '',
+  priceRange: [0, 1000000],
+  amenities: [],
+  period: 'Harian'
+})
+
+// Pagination
+const currentPage = ref(1)
+const totalPages = ref(1)
+const totalResults = ref(0)
+
+// Loading and error states
+const isLoading = ref(false)
+const error = ref(null)
+
+// Auth state
+const isAuthenticated = ref(false)
+
+// Router
+const router = useRouter()
+const route = useRoute()
+
+// Mock data for testing
+const mockRooms = [
+  {
+    id: 1,
+    name: 'Meeting Room Semarang',
+    location: 'Semarang',
+    type: 'Meeting Room',
+    capacity: '1-10 orang',
+    price: 75000,
+    price_per_day: 75000,
+    image: 'https://via.placeholder.com/300x200/f97316/ffffff?text=Meeting+Room',
+    rating: 4.5,
+    review_count: 15,
+    amenities: ['WiFi', 'AC', 'Projector']
+  },
+  {
+    id: 2,
+    name: 'Co-working Space Semarang',
+    location: 'Semarang',
+    type: 'Co-working',
+    capacity: '5-20 orang',
+    price: 125000,
+    price_per_day: 125000,
+    image: 'https://via.placeholder.com/300x200/f97316/ffffff?text=Co-working',
+    rating: 4.7,
+    review_count: 23,
+    amenities: ['WiFi', 'AC', 'Coffee']
+  },
+  {
+    id: 3,
+    name: 'Event Hall Semarang',
+    location: 'Semarang',
+    type: 'Event Hall',
+    capacity: '50-100 orang',
+    price: 350000,
+    price_per_day: 350000,
+    image: 'https://via.placeholder.com/300x200/f97316/ffffff?text=Event+Hall',
+    rating: 4.8,
+    review_count: 32,
+    amenities: ['Sound System', 'Stage', 'Parking']
+  }
+]
+
+// Computed properties
+const displayResultsCount = computed(() => {
+  return rooms.value ? rooms.value.length : 0
+})
+
+// Test function
+const testWithMockData = () => {
+  console.log('Loading mock data...')
+  rooms.value = [...mockRooms] // Create a copy to avoid reference issues
+  totalResults.value = mockRooms.length
+  totalPages.value = 1
+  hasSearched.value = true
+  isLoading.value = false
+  error.value = null
+  console.log('Mock data loaded successfully:', rooms.value)
 }
 
-/* Loading animation enhancement */
+// Search methods
+const performSearch = async (resetPage = true) => {
+  if (!searchQuery.value || searchQuery.value.trim() === '') {
+    console.log('No search query provided')
+    return
+  }
+  
+  if (resetPage) {
+    currentPage.value = 1
+  }
+  
+  hasSearched.value = true
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    const searchParams = {
+      query: searchQuery.value.trim(),
+      location: locationFilter.value || searchQuery.value.trim(),
+      type: filters.value.type,
+      priceRange: filters.value.priceRange,
+      amenities: filters.value.amenities,
+      period: filters.value.period,
+      page: currentPage.value,
+      per_page: 12
+    }
+    
+    console.log('Search params:', searchParams)
+    
+    const response = await fetchRooms(searchParams)
+    
+    console.log('API Response:', response)
+    
+    // Handle different response structures
+    if (response) {
+      if (response.data && Array.isArray(response.data)) {
+        // Standard pagination response
+        rooms.value = response.data
+        totalPages.value = response.meta?.last_page || 1
+        totalResults.value = response.meta?.total || response.data.length
+      } else if (Array.isArray(response)) {
+        // Direct array response
+        rooms.value = response
+        totalPages.value = 1
+        totalResults.value = response.length
+      } else if (response.rooms && Array.isArray(response.rooms)) {
+        // Nested rooms response
+        rooms.value = response.rooms
+        totalPages.value = response.pagination?.total_pages || 1
+        totalResults.value = response.pagination?.total || response.rooms.length
+      } else {
+        // Unexpected response structure
+        console.warn('Unexpected response structure:', response)
+        rooms.value = []
+        totalPages.value = 1
+        totalResults.value = 0
+      }
+    } else {
+      rooms.value = []
+      totalPages.value = 1
+      totalResults.value = 0
+    }
+    
+    console.log('Processed rooms:', rooms.value)
+    console.log('Total results:', totalResults.value)
+    
+  } catch (err) {
+    console.error('Search error:', err)
+    error.value = err.message || 'Failed to fetch rooms'
+    rooms.value = []
+    totalResults.value = 0
+    
+    // Fallback to mock data for testing
+    if (err.message && (err.message.includes('Network') || err.message.includes('timeout') || err.message.includes('fetch'))) {
+      console.log('Network error - using mock data for testing')
+      setTimeout(() => {
+        testWithMockData()
+      }, 1000)
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Handle search button click
+const handleSearch = async () => {
+  console.log('Search button clicked with query:', searchQuery.value)
+  await performSearch()
+}
+
+// Handle search input keydown
+const handleSearchKeydown = async (event) => {
+  if (event.key === 'Enter') {
+    console.log('Enter key pressed in search input')
+    await handleSearch()
+  }
+}
+
+// Retry search
+const retrySearch = () => {
+  console.log('Retrying search...')
+  performSearch(false)
+}
+
+// Filter methods
+const applyFilters = async () => {
+  console.log('Applying filters...')
+  if (hasSearched.value) {
+    currentPage.value = 1
+    await performSearch(false)
+  }
+}
+
+const resetFilters = async () => {
+  console.log('Resetting filters...')
+  filters.value = {
+    type: '',
+    priceRange: [0, 1000000],
+    amenities: [],
+    period: 'Harian'
+  }
+  locationFilter.value = ''
+  currentPage.value = 1
+  
+  if (hasSearched.value) {
+    await performSearch(false)
+  }
+}
+
+// Pagination
+const changePage = async (page) => {
+  if (page !== currentPage.value && page >= 1 && page <= totalPages.value) {
+    console.log('Changing to page:', page)
+    currentPage.value = page
+    await performSearch(false)
+  }
+}
+
+// Navigation methods
+const goToRoomDetail = (roomId) => {
+  if (roomId) {
+    console.log('Navigating to room detail:', roomId)
+    router.push(`/rooms/${roomId}`)
+  }
+}
+
+// Utility methods
+const formatPrice = (price) => {
+  if (!price) return '0'
+  return new Intl.NumberFormat('id-ID').format(price)
+}
+
+const handleImageError = (event) => {
+  console.warn('Image failed to load:', event.target.src)
+  event.target.style.display = 'none'
+}
+
+// Auth methods
+const logout = () => {
+  console.log('Logging out...')
+  isAuthenticated.value = false
+  // Add your logout logic here
+  router.push('/login')
+}
+
+// Watch for route changes
+watch(() => route.query, (newQuery) => {
+  if (newQuery.q && newQuery.q !== searchQuery.value) {
+    searchQuery.value = newQuery.q
+    performSearch()
+  }
+}, { immediate: true })
+
+// Initialize component
+onMounted(() => {
+  console.log('Component mounted')
+  
+  // Check if there's a search query in the route
+  if (route.query.q) {
+    searchQuery.value = route.query.q
+    performSearch()
+  }
+  
+  // Check authentication status
+  // Add your auth check logic here
+  isAuthenticated.value = false // Replace with actual auth check
+})
+
+// Debugging: Watch rooms array changes
+watch(rooms, (newRooms) => {
+  console.log('Rooms array changed:', newRooms)
+}, { deep: true })
+
+// Debugging: Watch hasSearched changes
+watch(hasSearched, (newValue) => {
+  console.log('hasSearched changed to:', newValue)
+})
+</script>
+
+<style scoped>
+/* Add any component-specific styles here */
+.font-koulen {
+  font-family: 'Koulen', cursive;
+}
+
+/* Loading animation */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .flex-col-mobile {
+    flex-direction: column;
+  }
+  
+  .w-64 {
+    width: 100%;
+  }
 }
 </style>

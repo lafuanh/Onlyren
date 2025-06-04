@@ -211,13 +211,13 @@ const routes = [
     path: '/admin',
     redirect: '/admin/dashboard'
   },
-  // {
-  //   path: '/admin/dashboard',
-  //   name: 'AdminDashboard',
-  //   component: AdminProfilePage,
-  //   beforeEnter: requireAdminAuth,
-  //   meta: { title: 'Admin Dashboard' }
-  // },
+  {
+    path: '/admin/dashboard',
+    name: 'AdminDashboard',
+    component: AdminProfilePage,
+    beforeEnter: requireAdminAuth,
+    meta: { title: 'Admin Dashboard' }
+  },
   // {
   //   path: '/admin/users',
   //   name: 'AdminUsers',

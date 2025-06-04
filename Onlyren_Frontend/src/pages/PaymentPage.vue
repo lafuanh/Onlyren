@@ -1,13 +1,21 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { fetchReservationDetails, processPayment } from '@/api/payment'
+import { ref, computed } from 'vue'
 import OnlyHeader from '@/components/OnlyHeader.vue'
 import OnlyFooter from '@/components/OnlyFooter.vue'
 
 // Component state
-const reservation = ref(null)
-const isLoading = ref(true)
+const reservation = ref({
+  room: {
+    name: 'Meeting Room A',
+    location: 'Jakarta',
+    price_per_hour: 50000
+  },
+  date: '2025-06-10',
+  start_time: '09:00',
+  end_time: '12:00',
+  guests: 10
+})
+const isLoading = ref(false)  // Set loading to false since we're showing static data
 const error = ref(null)
 
 // Payment state
@@ -19,10 +27,6 @@ const paymentForm = ref({
 })
 const paymentError = ref(null)
 const isProcessing = ref(false)
-
-// Route and navigation
-const route = useRoute()
-const router = useRouter()
 
 // Payment methods
 const paymentMethods = ref([
@@ -52,19 +56,6 @@ const paymentMethods = ref([
   }
 ])
 
-// Fetch reservation details
-const loadReservationDetails = async () => {
-  isLoading.value = true
-  try {
-    reservation.value = await fetchReservationDetails(route.params.id)
-  } catch (err) {
-    error.value = 'Failed to load reservation details'
-    console.error(err)
-  } finally {
-    isLoading.value = false
-  }
-}
-
 // Calculate total price
 const totalPrice = computed(() => {
   if (!reservation.value) return 0
@@ -76,7 +67,7 @@ const totalPrice = computed(() => {
   return hours * (reservation.value.room?.price_per_hour || 50000)
 })
 
-// Process payment
+// Submit payment
 const submitPayment = async () => {
   if (!selectedPaymentMethod.value) {
     paymentError.value = 'Please select a payment method'
@@ -88,16 +79,15 @@ const submitPayment = async () => {
 
   try {
     const paymentData = {
-      reservation_id: route.params.id,
+      reservation_id: 1,  // Static for now, replace with actual reservation ID if needed
       payment_method: selectedPaymentMethod.value,
       amount: totalPrice.value,
       ...paymentForm.value
     }
 
-    const payment = await processPayment(paymentData)
-    
+    // Simulate a successful payment process
     // Redirect to confirmation page
-    router.push(`/confirmation/${payment.id}`)
+    router.push(`/confirmation/1`)  // Replace with actual payment ID if needed
   } catch (err) {
     paymentError.value = 'Payment processing failed. Please try again.'
     console.error(err)
@@ -105,9 +95,6 @@ const submitPayment = async () => {
     isProcessing.value = false
   }
 }
-
-// Lifecycle hook
-onMounted(loadReservationDetails)
 
 // Utility methods
 const formatCurrency = (value) => {
@@ -131,15 +118,8 @@ const formatDate = (dateString) => {
   <!-- Header -->
   <OnlyHeader />
 
-  <div v-if="isLoading" class="text-center py-6">
-    Loading payment details...
-  </div>
-
-  <div v-else-if="error" class="bg-red-100 text-red-800 p-4 rounded-lg">
-    {{ error }}
-  </div>
-
-  <div v-else-if="reservation" class="bg-gray-50 min-h-screen">
+  <!-- Static Data Display -->
+  <div class="bg-gray-50 min-h-screen">
     <div class="container mx-auto px-4 py-6">
       <!-- Page Header -->
       <div class="mb-8">
@@ -317,15 +297,3 @@ const formatDate = (dateString) => {
 
   <OnlyFooter />
 </template>
-
-<style scoped>
-/* Additional custom styles if needed */
-.payment-method-card {
-  transition: all 0.2s ease;
-}
-
-.payment-method-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-</style>

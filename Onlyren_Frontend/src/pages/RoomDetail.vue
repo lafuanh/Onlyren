@@ -21,6 +21,14 @@ const reservationForm = ref({
 })
 const reservationError = ref(null)
 
+
+const goToPaymentDetail = (roomId) => {
+  if (roomId) {
+    console.log('Navigating to room detail:', roomId)
+    router.push(`/payments/${roomId}`)
+  }
+}
+
 // Route and navigation
 
 const route = useRoute()
@@ -262,10 +270,13 @@ const formatCurrency = (value) => {
 
                 <!-- Submit Button -->
                 <button 
+                  @click="goToPaymentDetail(room.id)" 
                   type="submit" 
                   class="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition-colors font-medium"
                 >
                   Book Now
+                  
+
                 </button>
               </form>
             </div>

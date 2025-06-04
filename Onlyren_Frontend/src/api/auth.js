@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // Set up axios defaults
 //process.env.VUE_APP_API_URL ||
-const API_BASE_URL = 'http://localhost:8080/api' 
+const API_BASE_URL = 'https://onlyren.noupal.pro/api/' 
 axios.defaults.baseURL = API_BASE_URL
 
 export const setupAxiosInterceptors = () => {
