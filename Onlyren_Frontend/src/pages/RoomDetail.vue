@@ -44,14 +44,16 @@ const submitReservation = async () => {
   isSubmitting.value = true;
   try {
     const payload = {
-      room_id: route.params.id,
+      room_id: Number(route.params.id),
       start_date: reservationForm.value.date,
-      end_date: reservationForm.value.date,   
+      end_date: reservationForm.value.date,
       start_time: reservationForm.value.start_time,
       end_time: reservationForm.value.end_time,
       guests: reservationForm.value.guests,
       notes: reservationForm.value.notes
     };
+
+    console.log('Reservation payload:', payload);
 
     const response = await createReservation(payload);
 
@@ -63,7 +65,11 @@ const submitReservation = async () => {
     }
 
   } catch (err) {
-    reservationError.value = err.message || 'Reservation failed. The time slot may be unavailable.';
+    if (err.response && err.response.data && err.response.data.message) {
+      reservationError.value = err.response.data.message;
+    } else {
+      reservationError.value = err.message || 'Reservation failed. The time slot may be unavailable.';
+    }
     console.error(err);
   } finally {
     isSubmitting.value = false;

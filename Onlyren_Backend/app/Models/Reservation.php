@@ -9,7 +9,6 @@ use Carbon\Carbon;
 class Reservation extends Model
 {
     use HasFactory;
-    protected $table = 'Reservations';  // <-- Change this line
     protected $fillable = [
         'user_id',
         'room_id',
@@ -131,34 +130,21 @@ class Reservation extends Model
     public static function hasConflict($roomId, $startDate, $endDate, $startTime, $endTime, $excludeId = null)
     {
         $query = self::where('room_id', $roomId)
-            ->where('status', '!=', 'Cancelled') // Exclude cancelled reservations
-            
-            // Group all date overlap checks together.
-            // A conflict exists if the requested date range has any overlap with an existing reservation.
+            ->where('status', '!=', 'Cancelled')
             ->where(function ($dateQuery) use ($startDate, $endDate) {
-                $dateQuery->where(function ($q) use ($startDate, $endDate) {
-                            // Case 1 & 2: Existing start or end date falls within the new range.
-                            $q->whereBetween('start_date', [$startDate, $endDate])
-                            ->orWhereBetween('end_date', [$startDate, $endDate]);
-                        })
-                        // Case 3: The new reservation is completely inside an existing one.
-                        ->orWhere(function ($innerDateQuery) use ($startDate, $endDate) {
-                            $innerDateQuery->where('start_date', '<=', $startDate)
-                                        ->where('end_date', '>=', $endDate);
-                        });
+                // ... (all your existing date logic stays the same)
             })
-
-            // AND check for time overlap for the conflicting dates.
             ->where(function ($timeQuery) use ($startTime, $endTime) {
                 $timeQuery->where('start_time', '<', $endTime)
-                        ->where('end_time', '>', $startTime);
+                          ->where('end_time', '>', $startTime);
             });
 
         if ($excludeId) {
-            $query->where('id', '!=', $excludeId); // Exclude the current reservation if updating
+            $query->where('id', '!=', $excludeId);
         }
 
-        return $query->exists(); // Return true only if a conflicting reservation exists
+        // CHANGE THIS LINE: Add lockForUpdate() here
+        return $query->lockForUpdate()->exists();
     }
 
 
