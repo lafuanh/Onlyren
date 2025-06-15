@@ -1,125 +1,134 @@
 <script setup>
-import { ref, computed } from 'vue'
-import OnlyHeader from '@/components/OnlyHeader.vue'
-import OnlyFooter from '@/components/OnlyFooter.vue'
+import { ref, onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { fetchReservationForPayment, processPayment } from '@/api/payment'; 
+import OnlyHeader from '@/components/OnlyHeader.vue';
+import OnlyFooter from '@/components/OnlyFooter.vue';
 
 // Component state
-const reservation = ref({
-  room: {
-    name: 'Meeting Room A',
-    location: 'Jakarta',
-    price_per_hour: 50000
-  },
-  date: '2025-06-10',
-  start_time: '09:00',
-  end_time: '12:00',
-  guests: 10
-})
-const isLoading = ref(false)  // Set loading to false since we're showing static data
-const error = ref(null)
+const reservation = ref(null);
+const isLoading = ref(true);
+const error = ref(null);
+const isProcessing = ref(false);
 
 // Payment state
-const selectedPaymentMethod = ref('')
+const selectedPaymentMethod = ref('');
 const paymentForm = ref({
   email: '',
   phone: '',
   notes: ''
-})
-const paymentError = ref(null)
-const isProcessing = ref(false)
+});
+const paymentError = ref(null);
+
+const route = useRoute();
+const router = useRouter();
 
 // Payment methods
 const paymentMethods = ref([
-  {
-    id: 'bank_transfer',
-    name: 'Transfer Bank',
-    icon: '🏦',
-    description: 'BCA, Mandiri, BNI, BRI'
-  },
-  {
-    id: 'e_wallet',
-    name: 'E-Wallet',
-    icon: '📱',
-    description: 'GoPay, OVO, DANA, ShopeePay'
-  },
-  {
-    id: 'credit_card',
-    name: 'Kartu Kredit/Debit',
-    icon: '💳',
-    description: 'Visa, Mastercard'
-  },
-  {
-    id: 'qris',
-    name: 'QRIS',
-    icon: '📋',
-    description: 'Scan QR untuk bayar'
+    { id: 'Bank Transfer', name: 'Transfer Bank', icon: '🏦', description: 'BCA, Mandiri, BNI, BRI' },
+    { id: 'QRIS', name: 'QRIS', icon: '📋', description: 'Scan QR untuk bayar' },
+    { id: 'Cash', name: 'Cash', icon: '💵', description: 'Bayar di tempat' }
+]);
+
+// --- Load real reservation data ---
+const loadReservation = async () => {
+  isLoading.value = true;
+  try {
+    const reservationId = route.params.id;
+    const data = await fetchReservationForPayment(reservationId);
+    reservation.value = data;
+    // Pre-fill user email if available
+    if(data.user?.email) {
+        paymentForm.value.email = data.user.email;
+    }
+  } catch (err) {
+    error.value = "Gagal memuat detail reservasi. Mungkin sudah tidak valid.";
+    console.error(err);
+  } finally {
+    isLoading.value = false;
   }
-])
+};
+
+onMounted(loadReservation);
 
 // Calculate total price
 const totalPrice = computed(() => {
-  if (!reservation.value) return 0
-  
-  const startTime = new Date(`2000-01-01T${reservation.value.start_time}`)
-  const endTime = new Date(`2000-01-01T${reservation.value.end_time}`)
-  const hours = (endTime - startTime) / (1000 * 60 * 60)
-  
-  return hours * (reservation.value.room?.price_per_hour || 50000)
-})
+  return reservation.value?.total_amount || 0;
+});
 
 // Submit payment
 const submitPayment = async () => {
   if (!selectedPaymentMethod.value) {
-    paymentError.value = 'Please select a payment method'
-    return
+    paymentError.value = 'Silakan pilih metode pembayaran.';
+    return;
   }
 
-  paymentError.value = null
-  isProcessing.value = true
+  paymentError.value = null;
+  isProcessing.value = true;
 
   try {
     const paymentData = {
-      reservation_id: 1,  // Static for now, replace with actual reservation ID if needed
-      payment_method: selectedPaymentMethod.value,
-      amount: totalPrice.value,
-      ...paymentForm.value
-    }
+      method: selectedPaymentMethod.value,
+      notes: paymentForm.value.notes
+    };
 
-    // Simulate a successful payment process
-    // Redirect to confirmation page
-    router.push(`/confirmation/1`)  // Replace with actual payment ID if needed
+    const result = await processPayment(reservation.value.id, paymentData);
+    
+    // Redirect to a confirmation page with the payment or reservation ID
+    router.push(`/confirmation/${result.id}`); 
+    
   } catch (err) {
-    paymentError.value = 'Payment processing failed. Please try again.'
-    console.error(err)
+    paymentError.value = err.message || 'Gagal memproses pembayaran. Silakan coba lagi.';
+    console.error(err);
   } finally {
-    isProcessing.value = false
+    isProcessing.value = false;
   }
-}
+};
 
 // Utility methods
 const formatCurrency = (value) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR'
-  }).format(value)
-}
-
+    if (typeof value !== 'number') return 'Rp 0';
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+};
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('id-ID', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+};
+const formatTime = (timeString) => {
+    if (!timeString) return '';
+    // Assuming time is in 'HH:mm:ss' format, just show 'HH:mm'
+    return timeString.substring(0, 5);
+};
 </script>
-
 <template>
   <!-- Header -->
   <OnlyHeader />
 
-  <!-- Static Data Display -->
-  <div class="bg-gray-50 min-h-screen">
+  <!-- Loading State -->
+  <div v-if="isLoading" class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+      <p class="text-gray-600">Memuat detail pembayaran...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div v-else-if="error" class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <div class="text-center">
+      <div class="text-red-500 text-6xl mb-4">⚠️</div>
+      <h2 class="text-2xl font-bold text-gray-900 mb-2">Terjadi Kesalahan</h2>
+      <p class="text-gray-600 mb-4">{{ error }}</p>
+      <button 
+        @click="loadReservation" 
+        class="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600"
+      >
+        Coba Lagi
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content - Only show when reservation data is loaded -->
+  <div v-else-if="reservation" class="bg-gray-50 min-h-screen">
     <div class="container mx-auto px-4 py-6">
       <!-- Page Header -->
       <div class="mb-8">
@@ -217,27 +226,29 @@ const formatDate = (dateString) => {
               <!-- Room Info -->
               <div class="mb-6">
                 <img 
-                  src="https://www.ikea.com/images/an-open-plan-cafe-shop-and-co-working-space-framed-by-open-g-cc39d1c39508ca5cbe043d4bf962f798.jpg?f=xxxl" 
-                  alt="Room"
+                  :src="reservation.room?.image || 'https://www.ikea.com/images/an-open-plan-cafe-shop-and-co-working-space-framed-by-open-g-cc39d1c39508ca5cbe043d4bf962f798.jpg?f=xxxl'" 
+                  :alt="reservation.room?.name || 'Room'"
                   class="w-full h-32 object-cover rounded-lg mb-3"
                 />
                 <h4 class="font-medium">{{ reservation.room?.name || 'Meeting Room' }}</h4>
-                <p class="text-sm text-gray-500">{{ reservation.room?.location || 'Jakarta' }}</p>
+                <p class="text-sm text-gray-500">{{ reservation.room?.location || 'Location not specified' }}</p>
               </div>
 
               <!-- Booking Details -->
               <div class="space-y-3 mb-6 pb-6 border-b border-gray-200">
                 <div class="flex justify-between">
                   <span class="text-gray-600">Tanggal</span>
-                  <span class="font-medium">{{ formatDate(reservation.date) }}</span>
+                  <span class="font-medium">{{ formatDate(reservation.date || reservation.start_date) }}</span>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-gray-600">Waktu</span>
-                  <span class="font-medium">{{ reservation.start_time }} - {{ reservation.end_time }}</span>
+                  <span class="font-medium">
+                    {{ formatTime(reservation.start_time) }} - {{ formatTime(reservation.end_time) }}
+                  </span>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-gray-600">Tamu</span>
-                  <span class="font-medium">{{ reservation.guests }} orang</span>
+                  <span class="font-medium">{{ reservation.guests || 1 }} orang</span>
                 </div>
               </div>
 
@@ -245,11 +256,24 @@ const formatDate = (dateString) => {
               <div class="space-y-3 mb-6">
                 <div class="flex justify-between">
                   <span class="text-gray-600">Harga per jam</span>
-                  <span>{{ formatCurrency(reservation.room?.price_per_hour || 50000) }}</span>
+                  <span>{{ formatCurrency(reservation.room?.price_per_hour || reservation.price_per_hour || 0) }}</span>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-gray-600">Durasi</span>
-                  <span>{{ Math.ceil((new Date(`2000-01-01T${reservation.end_time}`) - new Date(`2000-01-01T${reservation.start_time}`)) / (1000 * 60 * 60)) }} jam</span>
+                  <span>
+                    {{ 
+                      reservation.duration_hours || 
+                      Math.ceil((new Date(`2000-01-01T${reservation.end_time}`) - new Date(`2000-01-01T${reservation.start_time}`)) / (1000 * 60 * 60)) 
+                    }} jam
+                  </span>
+                </div>
+                <div v-if="reservation.service_fee" class="flex justify-between">
+                  <span class="text-gray-600">Biaya layanan</span>
+                  <span>{{ formatCurrency(reservation.service_fee) }}</span>
+                </div>
+                <div v-if="reservation.tax" class="flex justify-between">
+                  <span class="text-gray-600">Pajak</span>
+                  <span>{{ formatCurrency(reservation.tax) }}</span>
                 </div>
                 <div class="flex justify-between font-semibold text-lg pt-3 border-t border-gray-200">
                   <span>Total</span>

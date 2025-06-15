@@ -1,11 +1,11 @@
-import axios from 'axios'
+import apiClient from './client'
 
 export const fetchOrders = async () => {
-  const response = await axios.get('/api/orders')
+  const response = await apiClient.get('/api/orders')
   return response.data
 }
 
 export const manageOrder = async (orderId) => {
-  const response = await axios.put(`/api/orders/${orderId}/manage`)
+  const response = await apiClient.put(`/api/orders/${orderId}/manage`)
   return response.data
 }

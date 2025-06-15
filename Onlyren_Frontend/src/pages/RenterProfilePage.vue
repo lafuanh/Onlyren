@@ -253,15 +253,23 @@ const handleAddRoom = async (roomData) => {
   }
 };
 
-const handleEditRoom = async (roomData) => {
+const handleEditRoom = async (payload) => {
   try {
-    await updateRoom(roomData.id, roomData);
-    await loadRooms(); // Refresh the rooms list
-    showMessage('Room updated successfully');
-  } catch (err) {
-    showMessage(err.message || 'Failed to update room', 'error');
+    const { id, data, hasFile } = payload;
+    
+    const updatedRoom = await updateRoom(id, data, hasFile);
+    
+    const index = rooms.value.findIndex(room => room.id === id);
+    if (index !== -1) {
+      // INI ADALAH BARIS YANG MENJADI MASALAH (THIS IS THE PROBLEMATIC LINE)
+      rooms.value[index] = { ...rooms.value[index], ...updatedRoom }; 
+    }
+    
+    showNotification('Room updated successfully', 'success');
+  } catch (error) {
+    showNotification(error.message, 'error');
   }
-};
+}
 
 const handleDeleteRoom = async (roomId) => {
   try {

@@ -215,7 +215,7 @@ const routes = [
     path: '/admin/dashboard',
     name: 'AdminDashboard',
     component: AdminProfilePage,
-    beforeEnter: requireAdminAuth,
+    //beforeEnter: requireAdminAuth,
     meta: { title: 'Admin Dashboard' }
   },
   // {

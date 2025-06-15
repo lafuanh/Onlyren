@@ -1,20 +1,27 @@
 // @/api/client.js
 import axios from 'axios'
 
+// Determine the base URL based on the environment
+const API_BASE_URL = import.meta.env.DEV
+  ? 'http://localhost:8080/api/' // Development API URL
+  : 'https://onlyren.noupal.pro/api/'; // Production API URL
+
 // Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: 'https://onlyren.noupal.pro/api/',
+  baseURL: API_BASE_URL,
   timeout: 30000, // 30 seconds timeout
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest'
   },
+  withCredentials: true,
   // Add retry configuration
   retryAttempts: 3,
   retryDelay: 1000
 })
 
+// ... (rest of your client.js code remains the same)
 // Helper function to get auth token safely
 const getAuthToken = () => {
   try {
@@ -43,25 +50,26 @@ const isBrowser = () => typeof window !== 'undefined'
 // Request interceptor to add auth token and handle requests
 apiClient.interceptors.request.use(
   (config) => {
-    // Add auth token if available
     const token = getAuthToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     
-    // Add CSRF token if available
     if (isBrowser()) {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
       if (csrfToken) {
         config.headers['X-CSRF-TOKEN'] = csrfToken
       }
     }
-    
+
     // Ensure proper content type for form data
-    if (config.data instanceof FormData) {
-      delete config.headers['Content-Type'] // Let browser set it
+   if (config.data instanceof FormData) {
+      // Option 1: Delete the header. This is the standard and usually works.
+      delete config.headers['Content-Type']; 
+      config.headers['Content-Type'] = false; 
+      // Option 2 (Less common, only if delete doesn't work for some reason):
+      // config.headers['Content-Type'] = undefined; // Explicitly set to undefined
     }
-    
     // Log requests in development
     if (import.meta.env.DEV) {
       const logData = {
@@ -71,15 +79,15 @@ apiClient.interceptors.request.use(
         params: config.params,
         headers: { ...config.headers }
       }
-      
+
       // Don't log sensitive data
       if (logData.headers.Authorization) {
         logData.headers.Authorization = 'Bearer [HIDDEN]'
       }
-      
+
       console.log('🚀 API Request:', logData)
     }
-    
+
     return config
   },
   (error) => {
@@ -91,12 +99,12 @@ apiClient.interceptors.request.use(
 // Retry logic helper
 const retryRequest = async (error) => {
   const config = error.config
-  
+
   // Don't retry if we've exceeded max attempts or it's not a retryable error
   if (!config || config.__retryCount >= (config.retryAttempts || 3)) {
     return Promise.reject(error)
   }
-  
+
   // Only retry on specific error types
   const retryableErrors = [
     'ECONNABORTED', // Timeout
@@ -105,27 +113,27 @@ const retryRequest = async (error) => {
     'ECONNRESET',   // Connection reset
     'ETIMEDOUT'     // Timeout
   ]
-  
-  const shouldRetry = 
+
+  const shouldRetry =
     retryableErrors.includes(error.code) ||
     (error.response?.status >= 500 && error.response?.status <= 599) ||
     !error.response // Network error
-  
+
   if (!shouldRetry) {
     return Promise.reject(error)
   }
-  
+
   // Increment retry count
   config.__retryCount = (config.__retryCount || 0) + 1
-  
+
   // Calculate delay with exponential backoff
   const delay = (config.retryDelay || 1000) * Math.pow(2, config.__retryCount - 1)
-  
+
   console.log(`Retrying request (${config.__retryCount}/${config.retryAttempts}) after ${delay}ms...`)
-  
+
   // Wait before retrying
   await new Promise(resolve => setTimeout(resolve, delay))
-  
+
   // Retry the request
   return apiClient.request(config)
 }
@@ -142,7 +150,7 @@ apiClient.interceptors.response.use(
         data: response.data
       })
     }
-    
+
     return response
   },
   async (error) => {
@@ -156,7 +164,7 @@ apiClient.interceptors.response.use(
         error = retryError
       }
     }
-    
+
     // Log errors in development
     if (import.meta.env.DEV) {
       console.error('❌ API Error:', {
@@ -168,61 +176,61 @@ apiClient.interceptors.response.use(
         code: error.code
       })
     }
-    
+
     // Handle response errors
     if (error.response) {
       const { status, data } = error.response
-      
+
       switch (status) {
         case 401:
           // Unauthorized - clear auth and redirect to login
           console.warn('Authentication failed - clearing tokens')
           clearAuthToken()
-          
+
           // Only redirect if we're in browser and not already on login page
           if (isBrowser() && window.location.pathname !== '/login') {
             // Dispatch custom event for auth failure
-            window.dispatchEvent(new CustomEvent('auth:logout', { 
-              detail: { reason: 'unauthorized' } 
+            window.dispatchEvent(new CustomEvent('auth:logout', {
+              detail: { reason: 'unauthorized' }
             }))
-            
+
             // Redirect after a short delay to allow event handlers to run
             setTimeout(() => {
               window.location.href = '/login?reason=session_expired'
             }, 100)
           }
           break
-          
+
         case 403:
           // Forbidden
           console.error('Access forbidden:', data?.message)
           if (isBrowser()) {
-            window.dispatchEvent(new CustomEvent('auth:forbidden', { 
-              detail: { message: data?.message } 
+            window.dispatchEvent(new CustomEvent('auth:forbidden', {
+              detail: { message: data?.message }
             }))
           }
           break
-          
+
         case 404:
           // Not found - usually handled by individual API calls
           console.error('Resource not found:', data?.message)
           break
-          
+
         case 422:
           // Validation errors - usually handled by forms
           console.error('Validation errors:', data?.errors)
           break
-          
+
         case 429:
           // Too many requests
           console.error('Rate limit exceeded')
           if (isBrowser()) {
-            window.dispatchEvent(new CustomEvent('api:rate_limit', { 
-              detail: { retryAfter: error.response.headers['retry-after'] } 
+            window.dispatchEvent(new CustomEvent('api:rate_limit', {
+              detail: { retryAfter: error.response.headers['retry-after'] }
             }))
           }
           break
-          
+
         case 500:
         case 502:
         case 503:
@@ -230,12 +238,12 @@ apiClient.interceptors.response.use(
           // Server errors
           console.error('Server error:', data?.message || 'Internal server error')
           if (isBrowser()) {
-            window.dispatchEvent(new CustomEvent('api:server_error', { 
-              detail: { status, message: data?.message } 
+            window.dispatchEvent(new CustomEvent('api:server_error', {
+              detail: { status, message: data?.message }
             }))
           }
           break
-          
+
         default:
           console.error('API Error:', data?.message || `HTTP ${status} error`)
       }
@@ -243,15 +251,15 @@ apiClient.interceptors.response.use(
       // Network error
       console.error('Network error - no response received:', error.message)
       if (isBrowser()) {
-        window.dispatchEvent(new CustomEvent('api:network_error', { 
-          detail: { message: error.message } 
+        window.dispatchEvent(new CustomEvent('api:network_error', {
+          detail: { message: error.message }
         }))
       }
     } else {
       // Request setup error
       console.error('Request setup error:', error.message)
     }
-    
+
     return Promise.reject(error)
   }
 )
@@ -263,8 +271,8 @@ export const checkApiHealth = async () => {
     return { healthy: true, data: response.data }
   } catch (error) {
     console.error('API health check failed:', error)
-    return { 
-      healthy: false, 
+    return {
+      healthy: false,
       error: error.message,
       status: error.response?.status
     }
@@ -278,20 +286,20 @@ export const refreshAuthToken = async () => {
     if (!refreshToken) {
       throw new Error('No refresh token available')
     }
-    
+
     const response = await apiClient.post('/auth/refresh', {
       refresh_token: refreshToken
     })
-    
+
     const { access_token, refresh_token: newRefreshToken } = response.data
-    
+
     // Store new tokens
     const storage = localStorage.getItem('auth_token') ? localStorage : sessionStorage
     storage.setItem('auth_token', access_token)
     if (newRefreshToken) {
       storage.setItem('refresh_token', newRefreshToken)
     }
-    
+
     return access_token
   } catch (error) {
     console.error('Failed to refresh token:', error)
@@ -329,10 +337,10 @@ apiClient.interceptors.response.use(
   response => response,
   async error => {
     const originalRequest = error.config
-    
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
-      
+
       try {
         const newToken = await refreshAuthToken()
         originalRequest.headers.Authorization = `Bearer ${newToken}`
@@ -345,7 +353,7 @@ apiClient.interceptors.response.use(
         }
       }
     }
-    
+
     return Promise.reject(error)
   }
 )

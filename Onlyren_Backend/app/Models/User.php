@@ -74,4 +74,9 @@ class User extends Authenticatable
     {
         return !$this->is_admin && !$this->is_renter;
     }
+
+    public function renterProfile()
+    {
+        return $this->hasOne(RenterProfile::class);
+    }
 }

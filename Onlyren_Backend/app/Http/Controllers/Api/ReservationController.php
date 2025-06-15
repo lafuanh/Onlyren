@@ -82,101 +82,75 @@ class ReservationController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'room_id' => 'required|exists:rooms,id',
-                'start_date' => 'required|date|after_or_equal:today',
-                'end_date' => 'required|date|after_or_equal:start_date',
-                'start_time' => 'required|date_format:H:i',
-                'end_time' => 'required|date_format:H:i|after:start_time',
-                'guests' => 'required|integer|min:1',
-                'notes' => 'nullable|string|max:500'
-            ]);
+    try {
+        // Validate input data
+        $validator = Validator::make($request->all(), [
+            'room_id' => 'required|exists:rooms,id',
+            'start_date' => 'required|date|after_or_equal:today',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i|after:start_time',
+            'guests' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:500'
+        ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $data = $validator->validated();
-            $room = Room::findOrFail($data['room_id']);
-
-            // Check room capacity
-            if ($data['guests'] > $room->capacity) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Number of guests exceeds room capacity'
-                ], 422);
-            }
-
-            // Check for conflicts
-            if (Reservation::hasConflict(
-                $data['room_id'],
-                $data['start_date'],
-                $data['end_date'],
-                $data['start_time'],
-                $data['end_time']
-            )) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Room is not available for the selected time period'
-                ], 409);
-            }
-
-            DB::beginTransaction();
-
-            // Calculate duration and total amount
-            $startTime = Carbon::createFromFormat('H:i', $data['start_time']);
-            $endTime = Carbon::createFromFormat('H:i', $data['end_time']);
-            $duration = $endTime->diffInHours($startTime);
-            $totalAmount = $room->price_per_hour * $duration;
-
-            // Create reservation
-            $reservation = Reservation::create([
-                'user_id' => Auth::id(),
-                'room_id' => $data['room_id'],
-                'start_date' => $data['start_date'],
-                'end_date' => $data['end_date'],
-                'start_time' => $data['start_time'],
-                'end_time' => $data['end_time'],
-                'duration' => $duration,
-                'guests' => $data['guests'],
-                'total_amount' => $totalAmount,
-                'notes' => $data['notes'] ?? null,
-                'status' => 'Pending'
-            ]);
-
-            // Create payment record
-            $payment = Payment::create([
-                'reservation_id' => $reservation->id,
-                'amount' => $totalAmount,
-                'status' => 'Pending',
-                'transaction_id' => Payment::generateTransactionId()
-            ]);
-
-            DB::commit();
-
-            // Load relationships
-            $reservation->load(['room:id,name,images,address', 'payment']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Reservation created successfully',
-                'data' => $reservation
-            ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
+        if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create reservation',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Retrieve validated data
+        $data = $validator->validated();
+
+        // Check room availability
+        if (Reservation::hasConflict($data['room_id'], $data['start_date'], $data['end_date'], $data['start_time'], $data['end_time'])) {
+            return response()->json(['success' => false, 'message' => 'Room is not available for the selected time period.'], 409);
+        }
+
+        // Proceed to create reservation
+        $room = Room::findOrFail($data['room_id']);
+        $startTime = Carbon::createFromFormat('H:i', $data['start_time']);
+        $endTime = Carbon::createFromFormat('H:i', $data['end_time']);
+        $duration = $endTime->diffInHours($startTime);
+        $totalAmount = $room->price_per_hour * $duration;
+
+        // Create reservation record
+        $reservation = Reservation::create([
+            'user_id' => Auth::id(),
+            'room_id' => $data['room_id'],
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
+            'start_time' => $data['start_time'],
+            'end_time' => $data['end_time'],
+            'duration' => $duration,
+            'guests' => $data['guests'],
+            'total_amount' => $totalAmount,
+            'notes' => $data['notes'] ?? null,
+            'status' => 'pending'
+        ]);
+
+        // Create associated payment record
+        Payment::create([
+            'reservation_id' => $reservation->id,
+            'amount' => $totalAmount,
+            'status' => 'pending',
+            'transaction_id' => Payment::generateTransactionId(),
+            'notes' => $data['notes'] ?? null
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Reservation created successfully', 'data' => $reservation], 201);
+
+    } catch (\Exception $e) {
+        // Log the error for debugging purposes
+        \Log::error('Error creating reservation: ' . $e->getMessage());
+
+        return response()->json(['success' => false, 'message' => 'Failed to create reservation. Please try again later.', 'error' => $e->getMessage()], 500);
         }
     }
+
 
     /**
      * Display the specified reservation
@@ -231,7 +205,7 @@ class ReservationController extends Controller
             }
 
             // Only allow updates for pending reservations
-            if ($reservation->status !== 'Pending') {
+            if ($reservation->status !== 'pending') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Cannot update reservation with status: ' . $reservation->status
@@ -336,7 +310,7 @@ class ReservationController extends Controller
             }
 
             // Only allow cancellation for pending reservations
-            if ($reservation->status !== 'Pending') {
+            if ($reservation->status !== 'pending') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Cannot cancel reservation with status: ' . $reservation->status
@@ -350,7 +324,7 @@ class ReservationController extends Controller
 
             // Update payment status
             if ($reservation->payment) {
-                $reservation->payment->update(['status' => 'Cancelled']);
+                $reservation->payment->update(['status' => 'cancelled']);
             }
 
             DB::commit();

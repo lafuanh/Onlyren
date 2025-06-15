@@ -1,58 +1,29 @@
-import axios from 'axios'
-
-// Set up axios defaults
-//process.env.VUE_APP_API_URL ||
-const API_BASE_URL = 'https://onlyren.noupal.pro/api/' 
-axios.defaults.baseURL = API_BASE_URL
-
-export const setupAxiosInterceptors = () => {
-  // Add request interceptor to include auth token
-  axios.interceptors.request.use(
-    (config) => {
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error) => {
-      return Promise.reject(error);
-    }
-  );
-
-  // Add response interceptor to handle token expiration
-  axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response?.status === 401) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-      }
-      return Promise.reject(error);
-    }
-  );
-};
+// @/api/auth.js
+// Import the pre-configured apiClient instance
+import apiClient from './client' // Make sure the path is correct: ./client or ../client if in a nested folder
 
 /**
  * Login user
  */
 export const login = async (credentials) => {
   try {
-    const response = await axios.post('/login', credentials)
-    
+    // Use apiClient for the request
+    const response = await apiClient.post('/login', credentials)
+
     if (response.data.success) {
       const { user, token } = response.data.data
-      
-      // Store token and user data
+
+      // Store token and user data. The apiClient's interceptor will also pick this up.
       localStorage.setItem('auth_token', token)
       localStorage.setItem('user', JSON.stringify(user))
-      
+
       return { user, token }
     }
-    
+
     throw new Error(response.data.message || 'Login failed')
   } catch (error) {
+    // Error handling largely remains the same, but the apiClient interceptors
+    // will handle global error concerns (like 401 redirects).
     if (error.response?.data?.message) {
       throw new Error(error.response.data.message)
     }
@@ -65,24 +36,25 @@ export const login = async (credentials) => {
  */
 export const register = async (userData) => {
   try {
-    const response = await axios.post('/register', {
+    // Use apiClient for the request
+    const response = await apiClient.post('/register', {
       name: userData.name,
       email: userData.email,
       password: userData.password,
       password_confirmation: userData.password_confirmation,
       role: userData.role
     })
-    
+
     if (response.data.success) {
       const { user, token } = response.data.data
-      
+
       // Store token and user data
       localStorage.setItem('auth_token', token)
       localStorage.setItem('user', JSON.stringify(user))
-      
+
       return { user, token }
     }
-    
+
     throw new Error(response.data.message || 'Registration failed')
   } catch (error) {
     if (error.response?.data?.message) {
@@ -101,24 +73,33 @@ export const register = async (userData) => {
  */
 export const getCurrentUser = async () => {
   try {
+    // The apiClient interceptor will add the token if it exists.
+    // We only need to check if a token is in localStorage *before* making the request
+    // if we want to immediately return null without an API call.
     const token = localStorage.getItem('auth_token')
     if (!token) {
+      // No token, no need to make an API call
       return null
     }
 
-    const response = await axios.get('/user')
-    
+    // Use apiClient for the request
+    const response = await apiClient.get('/user')
+
     if (response.data.success) {
       const user = response.data.data
       localStorage.setItem('user', JSON.stringify(user))
       return user
     }
-    
+
     return null
   } catch (error) {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('user')
-    return null
+    // The 401 interceptor in client.js will handle clearing tokens and redirecting.
+    // For other errors, we might still want to clear, but often the 401 handler is sufficient.
+    console.error('Error fetching current user:', error);
+    // You might still want to clear local storage here if the API call itself fails
+    // for non-401 reasons that indicate a bad session.
+    // For now, let's rely on the apiClient's 401 handler for token clearing.
+    return null;
   }
 }
 
@@ -127,12 +108,17 @@ export const getCurrentUser = async () => {
  */
 export const logout = async () => {
   try {
-    await axios.post('/logout')
+    // Use apiClient for the request
+    await apiClient.post('/logout')
   } catch (error) {
     console.error('Logout error:', error)
   } finally {
+    // Ensure tokens are cleared regardless of API response for logout
     localStorage.removeItem('auth_token')
     localStorage.removeItem('user')
+    // If you have a separate refresh token for logout specifically, clear it too
+    localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('refresh_token'); // Clear from both just in case
   }
 }
 

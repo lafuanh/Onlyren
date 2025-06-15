@@ -7,152 +7,32 @@ import apiClient from './client'
  * @returns {Promise} API response with rooms data
  */
 export const fetchRooms = async (params = {}) => {
-  try {
-    // Clean up parameters and build query string
-    const cleanParams = {}
-    
-    // Add search query if provided
-    if (params.query && typeof params.query === 'string' && params.query.trim()) {
-      cleanParams.search = params.query.trim()
-    }
-    
-    // Add location search (since your UI has location in search)
-    if (params.location && typeof params.location === 'string' && params.location.trim()) {
-      cleanParams.location = params.location.trim()
-    }
-    
-    // Add room type filter
-    if (params.type && typeof params.type === 'string' && params.type.trim()) {
-      cleanParams.type = params.type.trim()
-    }
-    
-    // Add price range filters with validation
-    if (params.priceRange && Array.isArray(params.priceRange) && params.priceRange.length === 2) {
-      const [minPrice, maxPrice] = params.priceRange
-      
-      if (typeof minPrice === 'number' && minPrice > 0) {
-        cleanParams.price_min = minPrice
-      }
-      if (typeof maxPrice === 'number' && maxPrice > 0 && maxPrice < 1000000) {
-        cleanParams.price_max = maxPrice
-      }
-    }
-    
-    // Add amenities filter
-    if (params.amenities && Array.isArray(params.amenities) && params.amenities.length > 0) {
-      cleanParams.amenities = params.amenities.filter(Boolean).join(',')
-    }
-    
-    // Add period filter with validation
-    if (params.period && ['Harian', 'Mingguan', 'Bulanan'].includes(params.period)) {
-      cleanParams.period = params.period
-    }
-    
-    // Add pagination with validation
-    cleanParams.page = Math.max(1, parseInt(params.page) || 1)
-    cleanParams.per_page = Math.min(50, Math.max(1, parseInt(params.per_page) || 12))
-    
-    // Add sorting (optional)
-    cleanParams.sort_by = params.sort_by || 'created_at'
-    cleanParams.sort_order = ['asc', 'desc'].includes(params.sort_order) ? params.sort_order : 'desc'
-    
-    console.log('Fetching rooms with params:', cleanParams)
-    
-    const response = await apiClient.get('/rooms', {
-      params: cleanParams,
-      timeout: 15000 // 15 second timeout for search
-    })
-    
-    // Validate response structure
-    if (!response || !response.data) {
-      throw new Error('Invalid response format from server')
-    }
-    
-    const data = response.data.data || response.data || []
-    const meta = response.data.meta || {
-      current_page: cleanParams.page,
-      last_page: Math.ceil((data.length || 0) / cleanParams.per_page),
-      per_page: cleanParams.per_page,
-      total: data.length || 0
-    }
-    
-    // Ensure data is array
-    const rooms = Array.isArray(data) ? data : []
-    
-    return {
-      data: rooms.map(room => ({
-        id: room.id,
-        name: room.name || '',
-        description: room.description || '',
-        location: room.location || '',
-        type: room.type || 'General',
-        capacity: room.capacity || '1-10',
-        price: room.price || room.price_per_day || 50000,
-        price_per_day: room.price_per_day || 50000,
-        price_per_week: room.price_per_week || 300000,
-        price_per_month: room.price_per_month || 1200000,
-        image: room.image || room.featured_image || '',
-        featured_image: room.featured_image || room.image || '',
-        images: Array.isArray(room.images) ? room.images : [],
-        amenities: Array.isArray(room.amenities) ? room.amenities : [],
-        rating: parseFloat(room.rating || room.average_rating || 4.5),
-        review_count: parseInt(room.review_count || room.total_reviews || 0),
-        reviews: room.reviews || 0,
-        is_available: room.is_available !== false,
-        created_at: room.created_at,
-        updated_at: room.updated_at
-      })),
-      meta: {
-        current_page: parseInt(meta.current_page || cleanParams.page),
-        last_page: parseInt(meta.last_page || 1),
-        per_page: parseInt(meta.per_page || cleanParams.per_page),
-        total: parseInt(meta.total || 0)
-      }
-    }
-    
-  } catch (error) {
-    console.error('Error fetching rooms:', error)
-    
-    // Handle different types of errors
-    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-      throw new Error('Request timeout - please try again')
-    }
-    
-    if (error.response) {
-      const status = error.response.status
-      const message = error.response.data?.message || error.response.data?.error || error.message
-      
-      switch (status) {
-        case 400:
-          throw new Error(`Bad request: ${message}`)
-        case 401:
-          throw new Error('Authentication required')
-        case 403:
-          throw new Error('Access forbidden')
-        case 404:
-          throw new Error('Rooms endpoint not found')
-        case 422:
-          throw new Error(`Validation error: ${message}`)
-        case 429:
-          throw new Error('Too many requests - please wait a moment')
-        case 500:
-          throw new Error('Server error - please try again later')
-        case 502:
-        case 503:
-        case 504:
-          throw new Error('Service temporarily unavailable')
-        default:
-          throw new Error(message || 'Failed to fetch rooms')
-      }
-    }
-    
-    if (error.request) {
-      throw new Error('Network error - please check your connection')
-    }
-    
-    throw new Error(error.message || 'An unexpected error occurred')
-  }
-}
+  try {
+    const cleanParams = { ...params };
+
+    // Handle price range array
+    if (params.priceRange && Array.isArray(params.priceRange)) {
+      cleanParams.price_min = params.priceRange[0];
+      cleanParams.price_max = params.priceRange[1];
+      delete cleanParams.priceRange;
+    }
+
+    const response = await apiClient.get('/rooms', { params: cleanParams });
+
+    if (response.data && response.data.success) {
+      return {
+        data: response.data.data || [],
+        meta: response.data.meta || {}
+      };
+    } else {
+      throw new Error(response.data.message || 'Invalid response from server');
+    }
+
+  } catch (error) {
+    console.error('Error in fetchRooms API call:', error);
+    throw new Error(error.response?.data?.message || error.message || 'Failed to fetch rooms.');
+  }
+};
 
 /**
  * Fetch detailed information for a specific room
@@ -318,62 +198,49 @@ export const checkRoomAvailability = async (roomId, params = {}) => {
  */
 export const createReservation = async (reservationData) => {
   try {
-    // Validate required fields
-    const requiredFields = ['room_id', 'date', 'start_time', 'end_time', 'guests']
-    const missingFields = []
-    
+    // --- THIS IS THE CORRECTED VALIDATION ---
+    // We now check for the fields the backend actually needs.
+    const requiredFields = ['room_id', 'start_date', 'end_date', 'start_time', 'end_time', 'guests'];
+
+    const missingFields = [];
     for (const field of requiredFields) {
       if (!reservationData[field]) {
-        missingFields.push(field.replace('_', ' '))
+        missingFields.push(field.replace('_', ' '));
       }
     }
-    
+
     if (missingFields.length > 0) {
-      throw new Error(`Missing required fields: ${missingFields.join(', ')}`)
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
     
-    // Validate data types and formats
-    const guests = parseInt(reservationData.guests)
-    if (isNaN(guests) || guests < 1) {
-      throw new Error('Number of guests must be at least 1')
-    }
-    
-    // Prepare the payload
-    const payload = {
-      room_id: String(reservationData.room_id).trim(),
-      date: String(reservationData.date).trim(),
-      start_time: String(reservationData.start_time).trim(),
-      end_time: String(reservationData.end_time).trim(),
-      guests: guests,
-      notes: String(reservationData.notes || '').trim(),
-      status: 'pending'
-    }
-    
-    const response = await apiClient.post('/reservations', payload, {
+    // The payload is already correctly formatted by the Vue component, so we just send it.
+    const response = await apiClient.post('/reservations', reservationData, {
       timeout: 15000
-    })
+    });
     
-    return response.data.data || response.data
-    
+    // Return the full response so the component can get the 'data' object
+    return response.data; 
+
   } catch (error) {
-    console.error('Error creating reservation:', error)
-    
-    // Handle validation errors
+    console.error('Error creating reservation:', error);
+
+    // Handle validation errors from the backend
     if (error.response?.status === 422) {
-      const validationErrors = error.response.data.errors
+      const validationErrors = error.response.data.errors;
       if (validationErrors) {
-        const errorMessages = Object.values(validationErrors).flat()
-        throw new Error(errorMessages.join(', '))
+        const errorMessages = Object.values(validationErrors).flat();
+        throw new Error(errorMessages.join(', '));
       }
     }
     
     if (error.response?.status === 409) {
-      throw new Error('Time slot is no longer available')
+      throw new Error('Time slot is no longer available.');
     }
     
-    throw new Error(error.response?.data?.message || error.message || 'Failed to create reservation')
+    // Re-throw the original error or a custom one
+    throw new Error(error.response?.data?.message || error.message || 'Failed to create reservation.');
   }
-}
+};
 
 /**
  * Get user's reservations

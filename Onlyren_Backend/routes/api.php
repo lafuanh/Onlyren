@@ -71,21 +71,25 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Renter-specific routes
+     // Renter-specific routes
     Route::middleware(['renter'])->prefix('renter')->group(function () {
         Route::get('/profile', [RenterController::class, 'getProfile']);
         Route::put('/profile', [RenterController::class, 'updateProfile']);
-        Route::get('/dashboard', [RenterController::class, 'getDashboard']);
-        
-        // Renter room management
+
+        // Renter Room Management
         Route::prefix('rooms')->group(function () {
             Route::get('/', [RenterController::class, 'getRooms']);
-            Route::post('/', [RoomController::class, 'store']);
+            Route::post('/', [RenterController::class, 'store']);
             Route::get('/{id}', [RenterController::class, 'getRoom']);
-            Route::put('/{id}', [RoomController::class, 'update']);
-            Route::delete('/{id}', [RoomController::class, 'destroy']);
+            // [FIX] Mengganti Route::post menjadi Route::put untuk update
+            // Ini akan menangani request PUT asli dari frontend
+            Route::put('/{id}', [RenterController::class, 'update']);
+            // [FIX] Menambahkan kembali Route::post untuk menangani update via FormData (_method='PUT')
+            Route::post('/{id}', [RenterController::class, 'update']);
+            Route::delete('/{id}', [RenterController::class, 'destroy']);
         });
-        
-        // Renter reservations management
+
+        // Renter Reservation Management
         Route::prefix('reservations')->group(function () {
             Route::get('/', [RenterController::class, 'getReservations']);
             Route::put('/{id}/approve', [RenterController::class, 'approveReservation']);

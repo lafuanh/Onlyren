@@ -4,7 +4,6 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
-import { setupAxiosInterceptors } from './api/auth'
 
 // Import Tailwind CSS
 import './assets/tailwind.css'
@@ -19,8 +18,8 @@ app.use(pinia)
 // Setup router
 app.use(router)
 
-// Setup Axios interceptors
-setupAxiosInterceptors()
+// // Setup Axios interceptors
+// setupAxiosInterceptors()
 
 // Mount the app
 app.mount('#app')

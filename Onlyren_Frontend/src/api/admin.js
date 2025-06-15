@@ -1,5 +1,5 @@
 // src/api/admin.js
-import axios from 'axios'
+import apiClient from './client'
 
 const API_URL = 'http://your-backend-api-url/api/admin'  // Update with your API base URL
 

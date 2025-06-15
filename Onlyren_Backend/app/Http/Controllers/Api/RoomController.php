@@ -12,16 +12,147 @@ use Illuminate\Support\Facades\Log;
 
 class RoomController extends Controller
 {
-    /**
+    public function update($id, Request $request): JsonResponse
+    {
+        try {
+            Log::info('Attempting to update room.', ['room_id' => $id, 'request_data' => $request->all()]);
+            
+            $room = Room::findOrFail($id);
+
+            if ($room->owner_id !== $request->user()->id) {
+                return response()->json(['success' => false, 'message' => 'Anda tidak memiliki izin untuk memperbarui ruangan ini.'], 403);
+            }
+
+            // [REVISED] Added 'price_per_hour' to validation
+            $validator = Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'location' => 'required|string|max:255',
+                'type' => 'required|string|max:100',
+                'capacity' => 'required|string|max:100',
+                'price_per_hour' => 'required|numeric|min:0', // <<< ADDED
+                'price_per_day' => 'required|numeric|min:0',
+                'price_per_week' => 'nullable|numeric|min:0',
+                'price_per_month' => 'nullable|numeric|min:0',
+                'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'specifications' => 'nullable|string',
+                'amenities' => 'nullable|json',
+                'is_available' => 'boolean',
+            ]);
+
+            if ($validator->fails()) {
+                Log::error('Room update validation failed', ['room_id' => $id, 'errors' => $validator->errors()->toArray()]);
+                return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
+            }
+
+            $validatedData = $validator->validated();
+
+            if ($request->hasFile('featured_image')) {
+                if ($room->featured_image) {
+                    Storage::disk('public')->delete($room->featured_image);
+                }
+                $imagePath = $request->file('featured_image')->store('rooms', 'public');
+                $validatedData['featured_image'] = $imagePath;
+            }
+
+            if (isset($validatedData['amenities']) && is_string($validatedData['amenities'])) {
+                $validatedData['amenities'] = json_decode($validatedData['amenities'], true);
+            }
+
+            $room->update($validatedData);
+
+            Log::info('Room updated successfully', ['room_id' => $room->id]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ruangan berhasil diperbarui.',
+                'data' => $this->transformRoom($room->fresh(), true)
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Ruangan tidak ditemukan.'], 404);
+        } catch (\Exception $e) {
+            Log::error('Error updating room', ['room_id' => $id, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan internal server.'], 500);
+        }
+    }
+
+    public function destroy($id, Request $request): JsonResponse
+    {
+        try {
+            // Find the room by ID
+            $room = Room::findOrFail($id);
+
+            // --- Authorization Check ---
+            // Ensure only the owner can delete their room
+            if ($room->owner_id !== $request->user()->id) {
+                Log::warning('Unauthorized attempt to delete room', [
+                    'room_id' => $id,
+                    'user_id' => $request->user()->id ?? 'Guest'
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki izin untuk menghapus ruangan ini.'
+                ], 403); // Forbidden
+            }
+
+            // Delete associated featured image from storage if it exists
+            if ($room->featured_image) {
+                Storage::disk('public')->delete($room->featured_image);
+                Log::info('Deleted featured image for room', ['path' => $room->featured_image]);
+            }
+
+            // Optionally, delete other images if you have an 'images' column
+            if ($room->images && is_array($room->images)) {
+                foreach ($room->images as $imagePath) {
+                    // Assuming 'images' stores public paths or full paths
+                    $pathToDelete = str_replace('/storage/', '', $imagePath); // Adjust if your image path is different
+                    if (Storage::disk('public')->exists($pathToDelete)) {
+                        Storage::disk('public')->delete($pathToDelete);
+                    }
+                }
+                Log::info('Deleted additional images for room', ['room_id' => $id]);
+            }
+
+            // Delete the room from the database
+            $room->delete();
+
+            Log::info('Room deleted successfully', [
+                'room_id' => $id,
+                'user_id' => $request->user()->id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ruangan berhasil dihapus.'
+            ], 200); // 200 OK or 204 No Content for successful deletion
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::warning('Attempt to delete non-existent room', ['room_id' => $id]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ruangan tidak ditemukan.'
+            ], 404); // Not Found
+        } catch (\Exception $e) {
+            Log::error('Error deleting room', [
+                'room_id' => $id,
+                'error' => $e->getMessage(),
+                'stack' => $e->getTraceAsString(),
+                'user_id' => $request->user()->id ?? 'Guest'
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan internal server saat menghapus ruangan: ' . $e->getMessage()
+            ], 500); // Internal Server Error
+        }
+    }
+      /**
      * Display a listing of rooms with filters
      */
     public function index(Request $request): JsonResponse
     {
         try {
-            Log::info('Room search request', [
-                'query_params' => $request->all(),
-                'headers' => $request->headers->all()
-            ]);
+            Log::info('Room search request received', ['params' => $request->all()]);
 
             $validator = Validator::make($request->all(), [
                 'search' => 'nullable|string|max:255',
@@ -33,61 +164,72 @@ class RoomController extends Controller
                 'amenities' => 'nullable|string',
                 'page' => 'nullable|integer|min:1',
                 'per_page' => 'nullable|integer|min:1|max:50',
-                'sort_by' => 'nullable|string|in:created_at,price,rating,name',
+                'sort_by' => 'nullable|string|in:created_at,price_per_day,rating,name',
                 'sort_order' => 'nullable|string|in:asc,desc'
             ]);
 
             if ($validator->fails()) {
-                Log::error('Validation failed', [
-                    'errors' => $validator->errors()
-                ]);
                 return response()->json([
-                    'error' => 'Invalid parameters',
+                    'success' => false,
+                    'message' => 'Invalid search parameters.',
                     'errors' => $validator->errors()
                 ], 422);
             }
 
-            $data = $validator->validated();
-            $query = Room::query();
+            $query = Room::query()->where('is_available', true);
 
-            // Apply search filter
-            if (!empty($data['search'])) {
-                $searchTerm = $data['search'];
+            // General Search (searches name and description)
+            if ($request->filled('search')) {
+                $searchTerm = '%' . $request->input('search') . '%';
                 $query->where(function ($q) use ($searchTerm) {
-                    $q->where('name', 'LIKE', "%{$searchTerm}%")
-                        ->orWhere('description', 'LIKE', "%{$searchTerm}%")
-                        ->orWhere('location', 'LIKE', "%{$searchTerm}%");
+                    $q->where('name', 'LIKE', $searchTerm)
+                      ->orWhere('description', 'LIKE', $searchTerm);
                 });
             }
 
-            // Apply filters for other parameters here...
+            // **CRITICAL FIX: Location Search**
+            if ($request->filled('location')) {
+                $locationTerm = '%' . $request->input('location') . '%';
+                $query->where('location', 'LIKE', $locationTerm);
+            }
 
-            // Ensure the query is correct before executing
-            Log::info('Query prepared', [
-                'query' => $query->toSql(),
-                'bindings' => $query->getBindings()
-            ]);
+            // Price Filter based on Period
+            $priceColumn = $this->getPriceColumnByPeriod($request->input('period', 'Harian'));
+            if ($request->filled('price_min')) {
+                $query->where($priceColumn, '>=', $request->input('price_min'));
+            }
+            if ($request->filled('price_max')) {
+                $query->where($priceColumn, '<=', $request->input('price_max'));
+            }
 
-            $rooms = $query->paginate(12);
+            // Sorting
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortOrder = $request->input('sort_order', 'desc');
+            $query->orderBy($sortBy, $sortOrder);
+
+            // Pagination
+            $perPage = $request->input('per_page', 12);
+            $paginatedRooms = $query->paginate($perPage);
+            
+            Log::info('Search results count', ['count' => $paginatedRooms->total()]);
+
+            // Return a clean, structured response
             return response()->json([
-                'data' => $rooms,
+                'success' => true,
+                'data' => $paginatedRooms->items(),
                 'meta' => [
-                    'current_page' => $rooms->currentPage(),
-                    'last_page' => $rooms->lastPage(),
-                    'per_page' => $rooms->perPage(),
-                    'total' => $rooms->total(),
-                    'from' => $rooms->firstItem(),
-                    'to' => $rooms->lastItem()
+                    'current_page' => $paginatedRooms->currentPage(),
+                    'last_page' => $paginatedRooms->lastPage(),
+                    'per_page' => $paginatedRooms->perPage(),
+                    'total' => $paginatedRooms->total(),
                 ]
             ]);
+
         } catch (\Exception $e) {
-            Log::error('Error in room search', [
-                'error' => $e->getMessage(),
-                'stack' => $e->getTraceAsString()
-            ]);
+            Log::error('Room search error', ['error' => $e->getMessage()]);
             return response()->json([
-                'error' => 'Internal server error',
-                'message' => $e->getMessage()
+                'success' => false,
+                'message' => 'An internal server error occurred.'
             ], 500);
         }
     }
@@ -201,7 +343,7 @@ class RoomController extends Controller
     /**
      * Transform room data for API response
      */
-    private function transformRoom($room, $detailed = false): array
+        private function transformRoom($room, $detailed = false): array
     {
         $data = [
             'id' => $room->id,
@@ -210,11 +352,10 @@ class RoomController extends Controller
             'location' => $room->location,
             'type' => $room->type,
             'capacity' => $room->capacity,
-            'price' => $room->price_per_day,
+            'price_per_hour' => $room->price_per_hour, // <<< ADDED
             'price_per_day' => $room->price_per_day,
             'price_per_week' => $room->price_per_week,
             'price_per_month' => $room->price_per_month,
-            'image' => $room->featured_image,
             'featured_image' => $room->featured_image,
             'rating' => (float) $room->rating,
             'review_count' => (int) $room->review_count,
@@ -249,6 +390,81 @@ class RoomController extends Controller
                 return 'price_per_day';
         }
     }
-
     
+    
+    public function store(Request $request): JsonResponse
+    {
+        try {
+            Log::info('Attempting to create a new room.', [
+                'request_data' => $request->all(),
+                'user_id' => $request->user()->id ?? 'Guest'
+            ]);
+
+            // [REVISED] Added 'price_per_hour' to validation
+            $validator = Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'location' => 'required|string|max:255',
+                'type' => 'required|string|max:100',
+                'capacity' => 'required|string|max:100',
+                'price_per_hour' => 'required|numeric|min:0', // <<< ADDED
+                'price_per_day' => 'required|numeric|min:0',
+                'price_per_week' => 'nullable|numeric|min:0',
+                'price_per_month' => 'nullable|numeric|min:0',
+                'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'specifications' => 'nullable|string',
+                'amenities' => 'nullable|json',
+            ]);
+
+            if ($validator->fails()) {
+                Log::error('Room creation validation failed', [
+                    'errors' => $validator->errors()->toArray(),
+                    'request_data' => $request->all()
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $validatedData = $validator->validated();
+
+            $imagePath = null;
+            if ($request->hasFile('featured_image')) {
+                $imagePath = $request->file('featured_image')->store('rooms', 'public');
+            }
+            $validatedData['featured_image'] = $imagePath;
+            $validatedData['owner_id'] = $request->user()->id;
+            $validatedData['is_available'] = true;
+            $validatedData['is_featured'] = false;
+
+            if (isset($validatedData['amenities']) && is_string($validatedData['amenities'])) {
+                $validatedData['amenities'] = json_decode($validatedData['amenities'], true);
+            }
+
+            $room = Room::create($validatedData);
+
+            Log::info('Room created successfully', ['room_id' => $room->id, 'room_name' => $room->name]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Room created successfully',
+                'data' => $this->transformRoom($room, true)
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Error creating room', [
+                'error' => $e->getMessage(),
+                'stack' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Internal server error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
 }

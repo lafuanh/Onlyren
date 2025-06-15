@@ -48,51 +48,152 @@
           </button>
         </div>
 
-        <!-- User Profile and Messages Section -->
-        <div class="flex items-center space-x-4">
-          <router-link to="/messages" class="text-gray-600 hover:text-gray-800 transition-colors">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              class="h-12 w-12" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path 
-                stroke-linecap="round" 
-                stroke-linejoin="round" 
-                stroke-width="2" 
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" 
-              />
-            </svg>
-          </router-link>
+        <!-- Right side navigation -->
+      <div class="flex items-center space-x-4">
+        <!-- Messages link (only show when authenticated) -->
+        <router-link 
+          v-if="isAuthenticated" 
+          to="/messages" 
+          class="text-gray-600 hover:text-orange-500 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </router-link>
 
-          <template v-if="!isAuthenticated">
-            <router-link 
-              to="/login" 
-              class="bg-white border border-gray-300 rounded px-6 py-2 text-sm hover:bg-gray-50 transition-colors"
-            >
-              Masuk
-            </router-link>
-          </template>
-          
-          <template v-else>
-            <router-link 
-              to="/user" 
-              class="text-sm text-blue-600 hover:text-blue-800 transition-colors"
-            >
-              User Profile
-            </router-link>
+        <!-- Unauthenticated state -->
+        <template v-if="!isAuthenticated">
+          <router-link 
+            to="/login" 
+            class="bg-white border border-gray-300 rounded px-6 py-2 text-sm hover:bg-gray-50 transition-colors"
+          >
+            Masuk
+          </router-link>
+        </template>
+        
+        <!-- Authenticated state -->
+        <template v-else>
+          <!-- User dropdown menu -->
+          <div class="relative" ref="dropdownRef">
             <button 
-              @click="logout" 
-              class="bg-red-500 text-white rounded px-6 py-2 text-sm hover:bg-red-600 transition-colors"
+              @click="toggleDropdown"
+              class="flex items-center space-x-2 text-gray-700 hover:text-orange-500 focus:outline-none"
             >
-              Logout
+              <!-- User avatar -->
+              <div class="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                {{ getUserInitials() }}
+              </div>
+              <span class="text-sm font-medium">{{ user?.name || 'User' }}</span>
+              <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': showDropdown }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
             </button>
-          </template>
+
+            <!-- Dropdown menu -->
+            <div 
+              v-if="showDropdown"
+              class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+            >
+              <!-- Profile link based on user role -->
+              <router-link 
+                :to="getProfileRoute()"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                @click="closeDropdown"
+              >
+                <i class="fas fa-user mr-2"></i>
+                {{ getProfileLabel() }}
+              </router-link>
+              
+              <!-- Role-specific links -->
+              <template v-if="user?.is_admin">
+                <router-link 
+                  to="/admin/dashboard"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  @click="closeDropdown"
+                >
+                  <i class="fas fa-tachometer-alt mr-2"></i>
+                  Admin Dashboard
+                </router-link>
+              </template>
+              
+              <template v-else-if="user?.is_renter">
+                <router-link 
+                  to="/renter/profile"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  @click="closeDropdown"
+                >
+                  <i class="fas fa-building mr-2"></i>
+                  Renter Dashboard
+                </router-link>
+              </template>
+              
+              <template v-else>
+                <router-link 
+                  to="/profile"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  @click="closeDropdown"
+                >
+                  <i class="fas fa-calendar-alt mr-2"></i>
+                  My Reservations
+                </router-link>
+              </template>
+
+              <hr class="my-1">
+              
+              <!-- Logout button -->
+              <button 
+                @click="handleLogout"
+                :disabled="loggingOut"
+                class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                <i class="fas fa-sign-out-alt mr-2"></i>
+                {{ loggingOut ? 'Logging out...' : 'Logout' }}
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div 
+      v-if="showLogoutModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      @click="cancelLogout"
+    >
+      <div 
+        class="bg-white rounded-lg p-6 max-w-sm w-full mx-4"
+        @click.stop
+      >
+        <div class="flex items-center mb-4">
+          <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+            <i class="fas fa-sign-out-alt text-red-600"></i>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900">Confirm Logout</h3>
+        </div>
+        
+        <p class="text-gray-600 mb-6">
+          Are you sure you want to logout? You will need to login again to access your account.
+        </p>
+        
+        <div class="flex space-x-3">
+          <button 
+            @click="cancelLogout"
+            class="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            @click="confirmLogout"
+            :disabled="loggingOut"
+            class="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            {{ loggingOut ? 'Logging out...' : 'Logout' }}
+          </button>
         </div>
       </div>
-    </header>
+    </div>
+  </header>
 
     <!-- Main Content -->
     <div class="container mx-auto px-4 py-6">
@@ -100,8 +201,7 @@
         <!-- Sidebar Filters -->
         <div class="w-64 flex-shrink-0">
           <div class="bg-white rounded-lg shadow-sm p-6 sticky top-6">
-            <!-- Debug Info -->
-            <div class="mb-4 p-2 bg-gray-100 rounded text-xs" v-if="showDebug">
+            <!-- <div class="mb-4 p-2 bg-gray-100 rounded text-xs" v-if="showDebug">
               <p>Rooms count: {{ rooms.length }}</p>
               <p>Total results: {{ totalResults }}</p>
               <p>Loading: {{ isLoading }}</p>
@@ -110,13 +210,12 @@
               <p>Has searched: {{ hasSearched }}</p>
             </div>
 
-            <!-- Test Button -->
             <button 
               @click="testWithMockData" 
               class="w-full mb-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
             >
               Test with Mock Data
-            </button>
+            </button> -->
 
             <!-- Location Filter -->
             <div class="mb-6">
@@ -357,10 +456,12 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { fetchRooms } from '@/api/room'
 import OnlyFooter from '@/components/OnlyFooter.vue'
+import { getCurrentUser, logout } from '@/api/auth'
+
 
 // Search and filter state
 const searchQuery = ref('')
-const locationFilter = ref('')
+const locationFilter = ref('Semarang')
 const rooms = ref([])
 const hasSearched = ref(false)
 const showDebug = ref(true) // Set to false in production
@@ -450,87 +551,55 @@ const testWithMockData = () => {
 
 // Search methods
 const performSearch = async (resetPage = true) => {
-  if (!searchQuery.value || searchQuery.value.trim() === '') {
-    console.log('No search query provided')
-    return
+  // New condition: Search if the main query OR the location filter has a value.
+  if (!searchQuery.value.trim() && !locationFilter.value.trim()) {
+    rooms.value = [];
+    hasSearched.value = false;
+    return;
   }
-  
+
   if (resetPage) {
-    currentPage.value = 1
+    currentPage.value = 1;
   }
-  
-  hasSearched.value = true
-  isLoading.value = true
-  error.value = null
-  
+
+  isLoading.value = true;
+  error.value = null;
+  hasSearched.value = true;
+
   try {
     const searchParams = {
-      query: searchQuery.value.trim(),
-      location: locationFilter.value || searchQuery.value.trim(),
+      // The 'search' param is for general keywords from the top bar
+      search: searchQuery.value.trim(),
+      // The 'location' param is specifically for the location filter
+      location: locationFilter.value.trim(),
       type: filters.value.type,
       priceRange: filters.value.priceRange,
       amenities: filters.value.amenities,
       period: filters.value.period,
       page: currentPage.value,
-      per_page: 12
-    }
-    
-    console.log('Search params:', searchParams)
-    
-    const response = await fetchRooms(searchParams)
-    
-    console.log('API Response:', response)
-    
-    // Handle different response structures
-    if (response) {
-      if (response.data && Array.isArray(response.data)) {
-        // Standard pagination response
-        rooms.value = response.data
-        totalPages.value = response.meta?.last_page || 1
-        totalResults.value = response.meta?.total || response.data.length
-      } else if (Array.isArray(response)) {
-        // Direct array response
-        rooms.value = response
-        totalPages.value = 1
-        totalResults.value = response.length
-      } else if (response.rooms && Array.isArray(response.rooms)) {
-        // Nested rooms response
-        rooms.value = response.rooms
-        totalPages.value = response.pagination?.total_pages || 1
-        totalResults.value = response.pagination?.total || response.rooms.length
-      } else {
-        // Unexpected response structure
-        console.warn('Unexpected response structure:', response)
-        rooms.value = []
-        totalPages.value = 1
-        totalResults.value = 0
-      }
+    };
+
+    const response = await fetchRooms(searchParams);
+
+    if (response && response.data) {
+      rooms.value = response.data;
+      totalPages.value = response.meta.last_page || 1;
+      totalResults.value = response.meta.total || 0;
     } else {
-      rooms.value = []
-      totalPages.value = 1
-      totalResults.value = 0
+      rooms.value = [];
+      totalResults.value = 0;
+      totalPages.value = 1;
     }
-    
-    console.log('Processed rooms:', rooms.value)
-    console.log('Total results:', totalResults.value)
-    
+
   } catch (err) {
-    console.error('Search error:', err)
-    error.value = err.message || 'Failed to fetch rooms'
-    rooms.value = []
-    totalResults.value = 0
-    
-    // Fallback to mock data for testing
-    if (err.message && (err.message.includes('Network') || err.message.includes('timeout') || err.message.includes('fetch'))) {
-      console.log('Network error - using mock data for testing')
-      setTimeout(() => {
-        testWithMockData()
-      }, 1000)
-    }
+    console.error('Search page error:', err);
+    error.value = err.message;
+    rooms.value = [];
+    totalResults.value = 0;
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
 
 // Handle search button click
 const handleSearch = async () => {
@@ -605,13 +674,7 @@ const handleImageError = (event) => {
   event.target.style.display = 'none'
 }
 
-// Auth methods
-const logout = () => {
-  console.log('Logging out...')
-  isAuthenticated.value = false
-  // Add your logout logic here
-  router.push('/login')
-}
+
 
 // Watch for route changes
 watch(() => route.query, (newQuery) => {
@@ -623,17 +686,20 @@ watch(() => route.query, (newQuery) => {
 
 // Initialize component
 onMounted(() => {
-  console.log('Component mounted')
-  
-  // Check if there's a search query in the route
-  if (route.query.q) {
-    searchQuery.value = route.query.q
-    performSearch()
-  }
-  
-  // Check authentication status
-  // Add your auth check logic here
-  isAuthenticated.value = false // Replace with actual auth check
+  console.log('Component mounted')
+
+  // Check if there's a search query in the route
+  if (route.query.q) {
+    searchQuery.value = route.query.q
+  }
+
+  // Always perform an initial search on page load
+  performSearch()
+  checkAuthStatus()
+
+  
+  // Check authentication status
+  isAuthenticated.value = false // Replace with actual auth check
 })
 
 // Debugging: Watch rooms array changes
@@ -644,6 +710,134 @@ watch(rooms, (newRooms) => {
 // Debugging: Watch hasSearched changes
 watch(hasSearched, (newValue) => {
   console.log('hasSearched changed to:', newValue)
+})
+
+
+
+
+// Reactive state
+
+const user = ref(null)
+
+const showDropdown = ref(false)
+const showLogoutModal = ref(false)
+const loggingOut = ref(false)
+const dropdownRef = ref(null)
+
+
+// Check authentication status
+const checkAuthStatus = async () => {
+  try {
+    const currentUser = await getCurrentUser()
+    if (currentUser) {
+      isAuthenticated.value = true
+      user.value = currentUser
+    } else {
+      isAuthenticated.value = false
+      user.value = null
+    }
+  } catch (error) {
+    console.error('Error checking auth status:', error)
+    isAuthenticated.value = false
+    user.value = null
+  }
+}
+
+// Get user initials for avatar
+const getUserInitials = () => {
+  if (!user.value?.name) return 'U'
+  return user.value.name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
+
+// Get profile route based on user role
+const getProfileRoute = () => {
+  if (!user.value) return '/profile'
+  if (user.value.is_admin) return '/admin/dashboard'
+  if (user.value.is_renter) return '/renter/profile'
+  return '/profile'
+}
+
+// Get profile label based on user role
+const getProfileLabel = () => {
+  if (!user.value) return 'My Profile'
+  if (user.value.is_admin) return 'Admin Profile'
+  if (user.value.is_renter) return 'Renter Profile'
+  return 'My Profile'
+}
+
+
+// Dropdown functionality
+const toggleDropdown = () => {
+  showDropdown.value = !showDropdown.value
+}
+
+const closeDropdown = () => {
+  showDropdown.value = false
+}
+
+const handleClickOutside = (event) => {
+  if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
+    closeDropdown()
+  }
+}
+
+// Logout functionality
+const handleLogout = () => {
+  showDropdown.value = false
+  showLogoutModal.value = true
+}
+
+const cancelLogout = () => {
+  showLogoutModal.value = false
+}
+
+const confirmLogout = async () => {
+  loggingOut.value = true
+  
+  try {
+    // Call logout API
+    await logout()
+    
+    // Clear local storage and session storage
+    localStorage.clear()
+    sessionStorage.clear()
+    
+    // Update state
+    isAuthenticated.value = false
+    user.value = null
+    showLogoutModal.value = false
+    
+    // Show success message (optional)
+    console.log('Logged out successfully')
+    
+    // Redirect to login page
+    router.push('/login')
+    
+  } catch (error) {
+    console.error('Logout error:', error)
+    
+    // Even if API fails, clear local data and redirect
+    localStorage.clear()
+    sessionStorage.clear()
+    isAuthenticated.value = false
+    user.value = null
+    showLogoutModal.value = false
+    
+    router.push('/login')
+  } finally {
+    loggingOut.value = false
+  }
+}
+
+// Expose methods for parent components if needed
+defineExpose({
+  checkAuthStatus,
+  refreshUser: checkAuthStatus
 })
 </script>
 
@@ -677,5 +871,17 @@ watch(hasSearched, (newValue) => {
   .w-64 {
     width: 100%;
   }
+}
+
+/* Dropdown animation */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>

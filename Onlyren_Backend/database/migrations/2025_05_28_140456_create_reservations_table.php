@@ -11,15 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('reservations', function (Blueprint $table) {
+        Schema::create('Reservations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('room_id')->constrained('rooms')->onDelete('cascade');
             $table->date('start_date');
             $table->date('end_date');
-            $table->integer('duration');
-            $table->enum('status', ['Pending', 'Payment', 'Completed'])->default('Pending');
+            $table->time('start_time'); // Use time type
+            $table->time('end_time');   // Use time type
+            $table->integer('duration'); // in hours
             $table->integer('guests');
+            $table->decimal('total_amount', 10, 2); // Use decimal for money
+            $table->string('status', 50)->default('pending'); // Use string for status
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }

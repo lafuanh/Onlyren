@@ -1,82 +1,90 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { fetchRoomDetails, createReservation } from '@/api/room'
-import ReviewSection from '@/components/ReviewSection.vue'
-import ImageGallery from '@/components/ImageGallery.vue'
-import OnlyHeader from '@/components/OnlyHeader.vue'
-import OnlyFooter from '@/components/OnlyFooter.vue'
+import { ref, onMounted, computed } from 'vue'; 
+import { useRoute, useRouter } from 'vue-router';
+import { fetchRoomDetails } from '@/api/room'; 
+import { createReservation } from '@/api/reservation'; 
+import OnlyFooter from '@/components/OnlyFooter.vue';
 
-// Component state
-const room = ref(null)
-const isLoading = ref(true)
-const error = ref(null)
-
-// Reservation state
+const room = ref(null);
+const isLoading = ref(true);
+const error = ref(null);
+const isSubmitting = ref(false);
 const reservationForm = ref({
   date: '',
   start_time: '',
   end_time: '',
-  guests: 1
-})
-const reservationError = ref(null)
+  guests: 1,
+  notes: '' 
+});
+const reservationError = ref(null);
 
+const route = useRoute();
+const router = useRouter();
 
-const goToPaymentDetail = (roomId) => {
-  if (roomId) {
-    console.log('Navigating to room detail:', roomId)
-    router.push(`/payments/${roomId}`)
-  }
-}
-
-// Route and navigation
-
-const route = useRoute()
-const router = useRouter()
-
-// Fetch room details
 const loadRoomDetails = async () => {
-  isLoading.value = true
+  isLoading.value = true;
   try {
-    room.value = await fetchRoomDetails(route.params.id)
+    room.value = await fetchRoomDetails(route.params.id);
   } catch (err) {
-    reservationError.value = 'Failed to load room details'
-    console.error(err)
+    error.value = 'Failed to load room details. Please try again later.';
+    console.error(err);
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
 
-// Reservation submission
 const submitReservation = async () => {
-  reservationError.value = null
-  try {
-    const reservation = await createReservation({
-      room_id: route.params.id,
-      ...reservationForm.value
-    })
-    
-    // Confirm the reservation after creation
-    await confirmReservation(reservation.id)
-    
-    // Redirect to the payment page
-    router.push(`/payments/${reservation.id}`)
-  } catch (err) {
-    reservationError.value = 'Reservation failed. Please try again.'
-    console.error(err)
-  }
-}
+  reservationError.value = null;
 
-// Lifecycle hook
-onMounted(loadRoomDetails)
+  if (!reservationForm.value.date || !reservationForm.value.start_time || !reservationForm.value.end_time) {
+    reservationError.value = "Please fill in the date and time.";
+    return;
+  }
+
+  isSubmitting.value = true;
+  try {
+    const payload = {
+      room_id: route.params.id,
+      start_date: reservationForm.value.date,
+      end_date: reservationForm.value.date,   
+      start_time: reservationForm.value.start_time,
+      end_time: reservationForm.value.end_time,
+      guests: reservationForm.value.guests,
+      notes: reservationForm.value.notes
+    };
+
+    const response = await createReservation(payload);
+
+    const newReservation = response.data;
+    if (newReservation && newReservation.id) {
+      router.push(`/payments/${newReservation.id}`);
+    } else {
+      throw new Error('Invalid response from server when creating reservation.');
+    }
+
+  } catch (err) {
+    reservationError.value = err.message || 'Reservation failed. The time slot may be unavailable.';
+    console.error(err);
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+
+onMounted(loadRoomDetails);
+
+
 
 // Utility methods
 const formatCurrency = (value) => {
+  if (typeof value !== 'number') {
+    return 'Rp 0';
+  }
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
-    currency: 'IDR'
-  }).format(value)
-}
+    currency: 'IDR',
+    minimumFractionDigits: 0
+  }).format(value);
+};
 </script>
 
 
@@ -149,20 +157,43 @@ const formatCurrency = (value) => {
             </div>
           </div>
 
-          <!-- Pricing Section -->
+          <!-- FIXED: Pricing Section with Correct Labels and Database Columns -->
           <div class="bg-white rounded-xl p-6 mb-6 shadow-sm">
-            <div class="space-y-2">
-              <div class="flex justify-between items-center">
-                <span class="text-2xl font-bold">{{ formatCurrency(room.price_per_hour || 50000) }}</span>
-                <span class="text-gray-600">/Hari</span>
+            <h3 class="text-lg font-semibold mb-4">Harga Sewa</h3>
+            <div class="space-y-3">
+              <!-- Hourly Rate -->
+              <div v-if="room.price_per_hour" class="flex justify-between items-center py-2 border-b border-gray-100">
+                <span class="text-gray-600 font-medium">Per Jam</span>
+                <span class="text-lg font-semibold text-gray-900">{{ formatCurrency(room.price_per_hour) }}</span>
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-xl font-semibold">{{ formatCurrency(room.price_per_month || 320000) }}</span>
-                <span class="text-gray-600">/Minggu</span>
+              
+              <!-- Daily Rate -->
+              <div v-if="room.price_per_day" class="flex justify-between items-center py-2 border-b border-gray-100">
+                <span class="text-gray-600 font-medium">Per Hari</span>
+                <span class="text-xl font-bold text-orange-600">{{ formatCurrency(room.price_per_day) }}</span>
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-xl font-semibold">{{ formatCurrency(room.price_per_year || 1200000) }}</span>
-                <span class="text-gray-600">/Bulan</span>
+              
+              <!-- Weekly Rate -->
+              <div v-if="room.price_per_week" class="flex justify-between items-center py-2 border-b border-gray-100">
+                <span class="text-gray-600 font-medium">Per Minggu</span>
+                <span class="text-lg font-semibold text-gray-900">{{ formatCurrency(room.price_per_week) }}</span>
+              </div>
+              
+              <!-- Monthly Rate -->
+              <div v-if="room.price_per_month" class="flex justify-between items-center py-2">
+                <span class="text-gray-600 font-medium">Per Bulan</span>
+                <span class="text-lg font-semibold text-gray-900">{{ formatCurrency(room.price_per_month) }}</span>
+              </div>
+              
+              <!-- Yearly Rate -->
+              <div v-if="room.price_per_year" class="flex justify-between items-center py-2">
+                <span class="text-gray-600 font-medium">Per Tahun</span>
+                <span class="text-lg font-semibold text-gray-900">{{ formatCurrency(room.price_per_year) }}</span>
+              </div>
+              
+              <!-- Fallback if no prices are available -->
+              <div v-if="!room.price_per_hour && !room.price_per_day && !room.price_per_week && !room.price_per_month && !room.price_per_year" class="text-center py-4">
+                <span class="text-gray-500">Harga tidak tersedia. Silakan hubungi pemilik.</span>
               </div>
             </div>
           </div>
@@ -268,15 +299,25 @@ const formatCurrency = (value) => {
                   {{ reservationError }}
                 </div>
 
+                <!-- Price Preview -->
+                <div v-if="pricePreview > 0" class="bg-gray-50 p-4 rounded-lg mb-4">
+                  <div class="flex justify-between items-center text-sm text-gray-600 mb-2">
+                    <span>Estimasi Biaya</span>
+                    <span>{{ formatCurrency(room.price_per_hour || 0) }} × {{ Math.ceil((new Date(`1970-01-01T${reservationForm.end_time}`) - new Date(`1970-01-01T${reservationForm.start_time}`)) / (1000 * 60 * 60)) }} jam</span>
+                  </div>
+                  <div class="flex justify-between items-center font-semibold text-lg">
+                    <span>Total</span>
+                    <span class="text-orange-600">{{ formatCurrency(pricePreview) }}</span>
+                  </div>
+                </div>
+
                 <!-- Submit Button -->
                 <button 
-                  @click="goToPaymentDetail(room.id)" 
-                  type="submit" 
-                  class="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition-colors font-medium"
+                  type="submit"
+                  :disabled="isSubmitting"
+                  class="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition-colors font-medium disabled:bg-gray-400"
                 >
-                  Book Now
-                  
-
+                  {{ isSubmitting ? 'Processing...' : 'Book Now' }}
                 </button>
               </form>
             </div>
