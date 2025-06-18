@@ -194,6 +194,7 @@ export default {
           Renter
         </button>
         <button 
+          v-if="isLogin"
           @click="activeTab = 'admin'"
           :class="[
             'py-2 px-4 font-medium', 

@@ -245,6 +245,50 @@ export const generatePaymentReport = async (params = {}) => {
   }
 }
 
+/**
+ * Get reservation report
+ * @param {Object} params - Query parameters for filtering
+ * @returns {Promise} API response with reservation report data
+ */
+export const getReservationReport = async (params = {}) => {
+  try {
+    const response = await apiClient.get('/admin/reports/reservations', { params })
+    return response.data
+  } catch (error) {
+    console.error('Error fetching reservation report:', error)
+    throw new Error(error.response?.data?.message || error.message || 'Failed to fetch reservation report')
+  }
+}
+
+/**
+ * Get payment report
+ * @param {Object} params - Query parameters for filtering
+ * @returns {Promise} API response with payment report data
+ */
+export const getPaymentReport = async (params = {}) => {
+  try {
+    const response = await apiClient.get('/admin/reports/payments', { params })
+    return response.data
+  } catch (error) {
+    console.error('Error fetching payment report:', error)
+    throw new Error(error.response?.data?.message || error.message || 'Failed to fetch payment report')
+  }
+}
+
+/**
+ * Get dashboard analytics
+ * @returns {Promise} API response with dashboard analytics data
+ */
+export const getDashboardAnalytics = async () => {
+  try {
+    const response = await apiClient.get('/admin/reports/analytics')
+    return response.data
+  } catch (error) {
+    console.error('Error fetching dashboard analytics:', error)
+    throw new Error(error.response?.data?.message || error.message || 'Failed to fetch dashboard analytics')
+  }
+}
+
 // Settings API (placeholder - you can implement this later)
 export const fetchSettings = async () => {
   try {

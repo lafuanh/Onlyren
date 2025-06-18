@@ -162,6 +162,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('reports')->group(function () {
             Route::get('/reservations', [AdminController::class, 'getReservationReport']);
             Route::get('/payments', [AdminController::class, 'getPaymentReport']);
+            Route::get('/analytics', [AdminController::class, 'getDashboardAnalytics']);
         });
     });
 });

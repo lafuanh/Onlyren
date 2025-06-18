@@ -758,31 +758,51 @@ class AdminController extends Controller
     public function getReservationReport(Request $request): JsonResponse
     {
         try {
-            $startDate = $request->get('start_date', now()->startOfMonth());
-            $endDate = $request->get('end_date', now()->endOfMonth());
+            $query = Reservation::with(['room:id,name', 'user:id,name,email']);
 
-            $report = [
-                'period' => [
-                    'start_date' => $startDate,
-                    'end_date' => $endDate
-                ],
-                'total_reservations' => Reservation::whereBetween('created_at', [$startDate, $endDate])->count(),
-                'pending_reservations' => Reservation::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('status', 'pending')->count(),
-                'confirmed_reservations' => Reservation::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('status', 'confirmed')->count(),
-                'completed_reservations' => Reservation::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('status', 'completed')->count(),
-                'cancelled_reservations' => Reservation::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('status', 'cancelled')->count(),
-                'daily_stats' => $this->getDailyReservationStats($startDate, $endDate),
-                'top_rooms' => $this->getTopRoomsByReservations($startDate, $endDate),
-                'top_users' => $this->getTopUsersByReservations($startDate, $endDate)
+            // Apply date filters
+            if ($request->has('start_date') && $request->start_date) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+
+            if ($request->has('end_date') && $request->end_date) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+
+            // Apply status filter
+            if ($request->has('status') && $request->status) {
+                $query->where('status', $request->status);
+            }
+
+            // Get paginated results
+            $perPage = $request->get('per_page', 15);
+            $reservations = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+            // Calculate summary statistics
+            $summary = [
+                'total_reservations' => $query->count(),
+                'pending_reservations' => $query->clone()->where('status', 'pending')->count(),
+                'confirmed_reservations' => $query->clone()->where('status', 'Payment')->count(),
+                'completed_reservations' => $query->clone()->where('status', 'Completed')->count(),
+                'cancelled_reservations' => $query->clone()->where('status', 'Cancelled')->count(),
+                'total_revenue' => $query->clone()->whereIn('status', ['Payment', 'Completed'])->sum('total_amount'),
+                'this_month_reservations' => $query->clone()->whereMonth('created_at', now()->month)->count(),
+                'this_month_revenue' => $query->clone()->whereIn('status', ['Payment', 'Completed'])
+                    ->whereMonth('created_at', now()->month)->sum('total_amount')
             ];
 
             return response()->json([
                 'success' => true,
-                'data' => $report
+                'data' => [
+                    'reservations' => $reservations->items(),
+                    'summary' => $summary,
+                    'meta' => [
+                        'current_page' => $reservations->currentPage(),
+                        'last_page' => $reservations->lastPage(),
+                        'per_page' => $reservations->perPage(),
+                        'total' => $reservations->total()
+                    ]
+                ]
             ]);
 
         } catch (\Exception $e) {
@@ -800,36 +820,140 @@ class AdminController extends Controller
     public function getPaymentReport(Request $request): JsonResponse
     {
         try {
-            $startDate = $request->get('start_date', now()->startOfMonth());
-            $endDate = $request->get('end_date', now()->endOfMonth());
+            $query = Payment::with(['reservation.room:id,name', 'reservation.user:id,name,email']);
 
-            $report = [
-                'period' => [
-                    'start_date' => $startDate,
-                    'end_date' => $endDate
-                ],
-                'total_payments' => Payment::whereBetween('created_at', [$startDate, $endDate])->count(),
-                'total_revenue' => Payment::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('status', 'paid')->sum('amount'),
-                'pending_payments' => Payment::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('status', 'pending')->count(),
-                'paid_payments' => Payment::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('status', 'paid')->count(),
-                'cancelled_payments' => Payment::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('status', 'cancelled')->count(),
-                'payment_methods' => $this->getPaymentMethodStats($startDate, $endDate),
-                'daily_revenue' => $this->getDailyRevenueStats($startDate, $endDate)
+            // Apply date filters
+            if ($request->has('start_date') && $request->start_date) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+
+            if ($request->has('end_date') && $request->end_date) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+
+            // Apply status filter
+            if ($request->has('status') && $request->status) {
+                $query->where('status', $request->status);
+            }
+
+            // Apply method filter
+            if ($request->has('method') && $request->method) {
+                $query->where('method', $request->method);
+            }
+
+            // Get paginated results
+            $perPage = $request->get('per_page', 15);
+            $payments = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+            // Calculate summary statistics
+            $summary = [
+                'total_payments' => $query->count(),
+                'pending_payments' => $query->clone()->where('status', 'pending')->count(),
+                'paid_payments' => $query->clone()->where('status', 'paid')->count(),
+                'total_revenue' => $query->clone()->where('status', 'paid')->sum('amount'),
+                'this_month_payments' => $query->clone()->whereMonth('created_at', now()->month)->count(),
+                'this_month_revenue' => $query->clone()->where('status', 'paid')
+                    ->whereMonth('created_at', now()->month)->sum('amount'),
+                'payment_methods' => $query->clone()->where('status', 'paid')
+                    ->selectRaw('method, COUNT(*) as count, SUM(amount) as total')
+                    ->groupBy('method')
+                    ->get()
             ];
 
             return response()->json([
                 'success' => true,
-                'data' => $report
+                'data' => [
+                    'payments' => $payments->items(),
+                    'summary' => $summary,
+                    'meta' => [
+                        'current_page' => $payments->currentPage(),
+                        'last_page' => $payments->lastPage(),
+                        'per_page' => $payments->perPage(),
+                        'total' => $payments->total()
+                    ]
+                ]
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to generate payment report',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get dashboard analytics
+     */
+    public function getDashboardAnalytics(): JsonResponse
+    {
+        try {
+            $now = now();
+            $startOfMonth = $now->startOfMonth();
+            $endOfMonth = $now->endOfMonth();
+
+            // User statistics
+            $userStats = [
+                'total_users' => User::count(),
+                'total_renters' => User::where('role', 'renter')->count(),
+                'total_regular_users' => User::where('role', 'user')->count(),
+                'new_users_this_month' => User::whereBetween('created_at', [$startOfMonth, $endOfMonth])->count()
+            ];
+
+            // Room statistics
+            $roomStats = [
+                'total_rooms' => Room::count(),
+                'available_rooms' => Room::where('status', 'available')->count(),
+                'occupied_rooms' => Room::where('status', 'occupied')->count()
+            ];
+
+            // Reservation statistics
+            $reservationStats = [
+                'total_reservations' => Reservation::count(),
+                'pending_reservations' => Reservation::where('status', 'pending')->count(),
+                'confirmed_reservations' => Reservation::where('status', 'Payment')->count(),
+                'completed_reservations' => Reservation::where('status', 'Completed')->count(),
+                'this_month_reservations' => Reservation::whereBetween('created_at', [$startOfMonth, $endOfMonth])->count()
+            ];
+
+            // Payment statistics
+            $paymentStats = [
+                'total_payments' => Payment::count(),
+                'pending_payments' => Payment::where('status', 'pending')->count(),
+                'paid_payments' => Payment::where('status', 'paid')->count(),
+                'total_revenue' => Payment::where('status', 'paid')->sum('amount'),
+                'this_month_revenue' => Payment::where('status', 'paid')
+                    ->whereBetween('created_at', [$startOfMonth, $endOfMonth])->sum('amount')
+            ];
+
+            // Recent activity
+            $recentReservations = Reservation::with(['room:id,name', 'user:id,name'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+
+            $recentPayments = Payment::with(['reservation.room:id,name', 'reservation.user:id,name'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'user_stats' => $userStats,
+                    'room_stats' => $roomStats,
+                    'reservation_stats' => $reservationStats,
+                    'payment_stats' => $paymentStats,
+                    'recent_reservations' => $recentReservations,
+                    'recent_payments' => $recentPayments
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch dashboard analytics',
                 'error' => $e->getMessage()
             ], 500);
         }
