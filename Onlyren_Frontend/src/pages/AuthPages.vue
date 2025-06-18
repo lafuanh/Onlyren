@@ -1,4 +1,3 @@
-
 <script>
 import OnlyHeader from '@/components/OnlyHeader.vue'
 import OnlyFooter from '@/components/OnlyFooter.vue';
@@ -13,9 +12,9 @@ export default {
     const router = useRouter()
 
     const isLogin = ref(true)
-    const activeTab = ref('renter') // Default to renter since your test user is a renter
+    const activeTab = ref('user') // Default to user
     const isSubmitting = ref(false)
-    const showDebug = ref(true) // Set to false in production
+    const showDebug = ref(false) // Set to false in production
     
     const errorMessage = ref('')
     const successMessage = ref('')
@@ -44,9 +43,9 @@ export default {
 
     // Get redirect route based on user role
     const getRedirectRoute = (user) => {
-      if (user.is_admin) {
+      if (user.role === 'admin') {
         return '/admin/dashboard'
-      } else if (user.is_renter) {
+      } else if (user.role === 'renter') {
         return '/renter/profile'
       } else {
         return '/profile' // Regular user profile
@@ -193,6 +192,15 @@ export default {
           ]"
         >
           Renter
+        </button>
+        <button 
+          @click="activeTab = 'admin'"
+          :class="[
+            'py-2 px-4 font-medium', 
+            activeTab === 'admin' ? 'border-b-2 border-black' : 'text-gray-500'
+          ]"
+        >
+          Admin
         </button>
       </div>
 

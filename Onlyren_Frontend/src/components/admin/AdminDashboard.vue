@@ -1,148 +1,162 @@
 <!-- AdminDashboard.vue -->
 <template>
   <div class="space-y-6">
+    <!-- Page Header -->
     <div class="flex justify-between items-center">
-      <h1 class="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p class="text-gray-600">Overview of your platform's performance</p>
+      </div>
       <div class="text-sm text-gray-500">
-        Terakhir diperbarui: {{ new Date().toLocaleDateString('id-ID') }}
+        Last updated: {{ new Date().toLocaleString() }}
       </div>
     </div>
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+      <!-- Total Users -->
+      <div class="bg-white rounded-lg shadow p-6">
         <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <i class="fas fa-users text-blue-500 text-2xl"></i>
+          <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+            <i class="fas fa-users text-xl"></i>
           </div>
           <div class="ml-4">
-            <p class="text-sm font-medium text-gray-600">Total Pengguna</p>
-            <p class="text-2xl font-bold text-gray-900">{{ stats.totalUsers || 0 }}</p>
+            <p class="text-sm font-medium text-gray-600">Total Users</p>
+            <p class="text-2xl font-semibold text-gray-900">{{ stats.total_users || 0 }}</p>
           </div>
+        </div>
+        <div class="mt-4">
+          <span class="text-sm text-green-600">
+            <i class="fas fa-arrow-up"></i> +12% from last month
+          </span>
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+      <!-- Total Rooms -->
+      <div class="bg-white rounded-lg shadow p-6">
         <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <i class="fas fa-building text-green-500 text-2xl"></i>
+          <div class="p-3 rounded-full bg-green-100 text-green-600">
+            <i class="fas fa-building text-xl"></i>
           </div>
           <div class="ml-4">
-            <p class="text-sm font-medium text-gray-600">Total Properti</p>
-            <p class="text-2xl font-bold text-gray-900">{{ stats.totalProperties || 0 }}</p>
+            <p class="text-sm font-medium text-gray-600">Total Rooms</p>
+            <p class="text-2xl font-semibold text-gray-900">{{ stats.total_rooms || 0 }}</p>
           </div>
+        </div>
+        <div class="mt-4">
+          <span class="text-sm text-green-600">
+            <i class="fas fa-arrow-up"></i> +8% from last month
+          </span>
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+      <!-- Total Reservations -->
+      <div class="bg-white rounded-lg shadow p-6">
         <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <i class="fas fa-clipboard-list text-yellow-500 text-2xl"></i>
+          <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+            <i class="fas fa-calendar-check text-xl"></i>
           </div>
           <div class="ml-4">
-            <p class="text-sm font-medium text-gray-600">Pesanan Aktif</p>
-            <p class="text-2xl font-bold text-gray-900">{{ stats.activeOrders || 0 }}</p>
+            <p class="text-sm font-medium text-gray-600">Total Reservations</p>
+            <p class="text-2xl font-semibold text-gray-900">{{ stats.total_reservations || 0 }}</p>
           </div>
+        </div>
+        <div class="mt-4">
+          <span class="text-sm text-green-600">
+            <i class="fas fa-arrow-up"></i> +15% from last month
+          </span>
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
+      <!-- Total Revenue -->
+      <div class="bg-white rounded-lg shadow p-6">
         <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <i class="fas fa-rupiah-sign text-purple-500 text-2xl"></i>
+          <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+            <i class="fas fa-dollar-sign text-xl"></i>
           </div>
           <div class="ml-4">
-            <p class="text-sm font-medium text-gray-600">Pendapatan Bulan Ini</p>
-            <p class="text-2xl font-bold text-gray-900">Rp {{ formatCurrency(stats.monthlyRevenue || 0) }}</p>
+            <p class="text-sm font-medium text-gray-600">Total Revenue</p>
+            <p class="text-2xl font-semibold text-gray-900">{{ formatCurrency(stats.total_revenue || 0) }}</p>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Recent Activities -->
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Aktivitas Terbaru</h3>
-        <div class="space-y-4">
-          <div v-for="activity in recentActivities" :key="activity.id" class="flex items-center p-3 bg-gray-50 rounded-lg">
-            <div class="flex-shrink-0">
-              <i :class="getActivityIcon(activity.type)" class="text-gray-600"></i>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium text-gray-900">{{ activity.message }}</p>
-              <p class="text-xs text-gray-500">{{ formatTime(activity.timestamp) }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pending Approvals -->
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Menunggu Persetujuan</h3>
-        <div class="space-y-4">
-          <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-            <div>
-              <p class="text-sm font-medium text-gray-900">Properti Baru</p>
-              <p class="text-xs text-gray-500">{{ stats.pendingProperties || 0 }} properti menunggu review</p>
-            </div>
-            <button class="px-3 py-1 bg-yellow-500 text-white text-xs rounded-lg hover:bg-yellow-600">
-              Review
-            </button>
-          </div>
-          
-          <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-            <div>
-              <p class="text-sm font-medium text-gray-900">Pembayaran</p>
-              <p class="text-xs text-gray-500">{{ stats.pendingPayments || 0 }} pembayaran menunggu verifikasi</p>
-            </div>
-            <button class="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600">
-              Verifikasi
-            </button>
-          </div>
-
-          <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-            <div>
-              <p class="text-sm font-medium text-gray-900">Laporan</p>
-              <p class="text-xs text-gray-500">{{ stats.pendingReports || 0 }} laporan menunggu tindakan</p>
-            </div>
-            <button class="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600">
-              Tindak Lanjut
-            </button>
-          </div>
+        <div class="mt-4">
+          <span class="text-sm text-green-600">
+            <i class="fas fa-arrow-up"></i> +20% from last month
+          </span>
         </div>
       </div>
     </div>
 
     <!-- Charts Section -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Tren Pendapatan (6 Bulan Terakhir)</h3>
-        <div class="h-64 flex items-center justify-center text-gray-500">
-          <!-- Placeholder for chart -->
-          <div class="text-center">
-            <i class="fas fa-chart-line text-4xl mb-2"></i>
-            <p>Chart akan ditampilkan di sini</p>
+      <!-- Recent Activities -->
+      <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activities</h3>
+        <div class="space-y-4">
+          <div v-for="activity in stats.recent_activities || []" :key="activity.id" class="flex items-center">
+            <div class="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+            <div class="flex-1">
+              <p class="text-sm text-gray-900">{{ activity.description }}</p>
+              <p class="text-xs text-gray-500">{{ formatTime(activity.created_at) }}</p>
+            </div>
+          </div>
+          <div v-if="!stats.recent_activities || stats.recent_activities.length === 0" class="text-center text-gray-500 py-4">
+            No recent activities
           </div>
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Distribusi Jenis Properti</h3>
-        <div class="h-64 flex items-center justify-center text-gray-500">
-          <!-- Placeholder for pie chart -->
-          <div class="text-center">
-            <i class="fas fa-chart-pie text-4xl mb-2"></i>
-            <p>Pie Chart akan ditampilkan di sini</p>
+      <!-- Top Performing Rooms -->
+      <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Performing Rooms</h3>
+        <div class="space-y-4">
+          <div v-for="room in stats.top_rooms || []" :key="room.id" class="flex items-center justify-between">
+            <div class="flex items-center">
+              <img :src="room.image || '/default-room.jpg'" :alt="room.name" class="w-10 h-10 rounded-lg object-cover mr-3">
+              <div>
+                <p class="text-sm font-medium text-gray-900">{{ room.name }}</p>
+                <p class="text-xs text-gray-500">{{ room.location }}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-sm font-semibold text-gray-900">{{ room.reservation_count }} bookings</p>
+              <p class="text-xs text-gray-500">{{ formatCurrency(room.revenue) }}</p>
+            </div>
+          </div>
+          <div v-if="!stats.top_rooms || stats.top_rooms.length === 0" class="text-center text-gray-500 py-4">
+            No rooms data available
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <button class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <i class="fas fa-user-plus text-blue-600 text-xl mb-2"></i>
+          <p class="text-sm font-medium text-gray-900">Add User</p>
+        </button>
+        <button class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <i class="fas fa-building text-green-600 text-xl mb-2"></i>
+          <p class="text-sm font-medium text-gray-900">Add Room</p>
+        </button>
+        <button class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <i class="fas fa-chart-bar text-purple-600 text-xl mb-2"></i>
+          <p class="text-sm font-medium text-gray-900">View Reports</p>
+        </button>
+        <button class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <i class="fas fa-cog text-gray-600 text-xl mb-2"></i>
+          <p class="text-sm font-medium text-gray-900">Settings</p>
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { defineProps } from 'vue'
 
 const props = defineProps({
   stats: {
@@ -151,51 +165,21 @@ const props = defineProps({
   }
 })
 
-const recentActivities = computed(() => [
-  {
-    id: 1,
-    type: 'user',
-    message: 'Pengguna baru mendaftar: John Doe',
-    timestamp: new Date(Date.now() - 5 * 60 * 1000)
-  },
-  {
-    id: 2,
-    type: 'property',
-    message: 'Properti baru ditambahkan: Villa Sunset',
-    timestamp: new Date(Date.now() - 15 * 60 * 1000)
-  },
-  {
-    id: 3,
-    type: 'payment',
-    message: 'Pembayaran diverifikasi untuk pesanan #1234',
-    timestamp: new Date(Date.now() - 30 * 60 * 1000)
-  },
-  {
-    id: 4,
-    type: 'order',
-    message: 'Pesanan baru diterima dari Jane Smith',
-    timestamp: new Date(Date.now() - 45 * 60 * 1000)
-  }
-])
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('id-ID').format(amount)
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0
+  }).format(value)
 }
 
-const formatTime = (timestamp) => {
-  return new Intl.RelativeTimeFormat('id-ID').format(
-    Math.round((timestamp - new Date()) / (1000 * 60)),
-    'minute'
-  )
-}
-
-const getActivityIcon = (type) => {
-  const icons = {
-    user: 'fas fa-user-plus',
-    property: 'fas fa-building',
-    payment: 'fas fa-credit-card',
-    order: 'fas fa-shopping-cart'
-  }
-  return icons[type] || 'fas fa-info-circle'
+const formatTime = (dateString) => {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 </script>

@@ -16,8 +16,14 @@ return new class extends Migration
             $table->foreignId('sender_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('receiver_id')->constrained('users')->onDelete('cascade');
             $table->text('message');
-            $table->dateTime('sent_at');
+            $table->timestamp('sent_at')->useCurrent();
+            $table->boolean('is_read')->default(false);
             $table->timestamps();
+            
+            // Indexes for better performance
+            $table->index(['sender_id', 'receiver_id']);
+            $table->index(['receiver_id', 'is_read']);
+            $table->index('sent_at');
         });
     }
 

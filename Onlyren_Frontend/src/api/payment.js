@@ -7,21 +7,21 @@ import apiClient from './client'; // Use the central apiClient
  * @returns {Promise} API response with reservation and payment details
  */
 export const fetchReservationForPayment = async (reservationId) => {
-  if (!reservationId) {
-    throw new Error('Reservation ID is required.');
-  }
-  try {
-    // We use the reservation show endpoint, which includes payment info
-    const response = await apiClient.get(`/reservations/${reservationId}`);
-    if (response.data && response.data.success) {
-      return response.data.data;
+    if (!reservationId) {
+        throw new Error('Reservation ID is required.');
     }
-    throw new Error(response.data.message || 'Could not fetch reservation details.');
-  } catch (error) {
-    console.error('Error fetching reservation for payment:', error);
-    throw new Error(error.response?.data?.message || error.message);
-  }
+    try {
+        const response = await apiClient.get(`/reservations/${reservationId}`);
+        if (response.data && response.data.success) {
+            return response.data.data;
+        }
+        throw new Error(response.data.message || 'Could not fetch reservation details.');
+    } catch (error) {
+        console.error('Error fetching reservation for payment:', error);
+        throw new Error(error.response?.data?.message || error.message);
+    }
 };
+
 
 /**
  * Process the payment for a given reservation

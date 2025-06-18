@@ -22,7 +22,7 @@ class ReservationController extends Controller
     {
         try {
             $user = Auth::user();
-            $query = Reservation::with(['room:id,name,images,address', 'payment']);
+            $query = Reservation::with(['room:id,name,images,location', 'payment']);
 
             // Filter by user role
             if ($user->role === 'user') {
@@ -161,14 +161,14 @@ class ReservationController extends Controller
     {
         try {
             $reservation = Reservation::with([
-                'room:id,name,description,images,address,location,amenities,price_per_hour',
+                'room:id,name,description,images,location,amenities,price_per_hour',
                 'user:id,name,email',
                 'payment'
             ])->findOrFail($id);
 
             // Check authorization
             $user = Auth::user();
-            if ($user->role === 'user' && $reservation->user_id !== $user->id) {
+            if ($user && $user->role === 'user' && $reservation->user_id !== $user->id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized access'
@@ -180,12 +180,19 @@ class ReservationController extends Controller
                 'data' => $reservation
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Catch the specific exception for "not found"
             return response()->json([
                 'success' => false,
                 'message' => 'Reservation not found',
-                'error' => $e->getMessage()
             ], 404);
+        } catch (\Exception $e) {
+            // Catch any other unexpected errors
+            \Log::error('Error in ReservationController@show: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected server error occurred.',
+            ], 500);
         }
     }
 
@@ -276,7 +283,7 @@ class ReservationController extends Controller
 
             DB::commit();
 
-            $reservation->load(['room:id,name,images,address', 'payment']);
+            $reservation->load(['room:id,name,images,location', 'payment']);
 
             return response()->json([
                 'success' => true,

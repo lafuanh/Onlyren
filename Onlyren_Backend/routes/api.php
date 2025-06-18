@@ -5,11 +5,12 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\RenterController;
-// use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\MessageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -108,51 +109,59 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/messages', [RenterController::class, 'sendMessage']);
     });
 
-    
-});
+    // Message routes (available to all authenticated users)
+    Route::prefix('messages')->group(function () {
+        Route::get('/conversations', [MessageController::class, 'getConversations']);
+        Route::get('/conversations/{otherUserId}', [MessageController::class, 'getConversation']);
+        Route::post('/send', [MessageController::class, 'sendMessage']);
+        Route::put('/conversations/{senderId}/read', [MessageController::class, 'markAsRead']);
+        Route::get('/unread-count', [MessageController::class, 'getUnreadCount']);
+        Route::get('/search-users', [MessageController::class, 'searchUsers']);
+        Route::delete('/{messageId}', [MessageController::class, 'deleteMessage']);
+    });
 
-
-// // Admin-specific routes
-    // Route::middleware(['admin'])->prefix('admin')->group(function () {
-    //     Route::get('/dashboard', [AdminController::class, 'getDashboard']);
+    // Admin-specific routes
+    Route::middleware(['admin'])->prefix('admin')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'getDashboard']);
         
-    //      // User management
-    //     Route::prefix('users')->group(function () {
-    //         Route::get('/', [AdminController::class, 'getUsers']);
-    //         Route::get('/{id}', [AdminController::class, 'getUser']);
-    //         Route::put('/{id}', [AdminController::class, 'updateUser']);
-    //         Route::delete('/{id}', [AdminController::class, 'deleteUser']);
-    //     });
+        // User management
+        Route::prefix('users')->group(function () {
+            Route::get('/', [AdminController::class, 'getUsers']);
+            Route::get('/{id}', [AdminController::class, 'getUser']);
+            Route::put('/{id}', [AdminController::class, 'updateUser']);
+            Route::delete('/{id}', [AdminController::class, 'deleteUser']);
+        });
 
-    //     // Room management
-    //     Route::prefix('rooms')->group(function () {
-    //         Route::get('/', [AdminController::class, 'getRooms']);
-    //         Route::get('/{id}', [AdminController::class, 'getRoom']);
-    //         Route::put('/{id}', [AdminController::class, 'updateRoom']);
-    //         Route::delete('/{id}', [AdminController::class, 'deleteRoom']);
-    //     });
+        // Room management
+        Route::prefix('rooms')->group(function () {
+            Route::get('/', [AdminController::class, 'getRooms']);
+            Route::get('/{id}', [AdminController::class, 'getRoom']);
+            Route::put('/{id}', [AdminController::class, 'updateRoom']);
+            Route::delete('/{id}', [AdminController::class, 'deleteRoom']);
+        });
 
-    //     // Reservation management
-    //     Route::prefix('reservations')->group(function () {
-    //         Route::get('/', [AdminController::class, 'getReservations']);
-    //         Route::get('/{id}', [AdminController::class, 'getReservation']);
-    //         Route::put('/{id}/approve', [AdminController::class, 'approveReservation']);
-    //         Route::put('/{id}/reject', [AdminController::class, 'rejectReservation']);
-    //         Route::put('/{id}/complete', [AdminController::class, 'completeReservation']);
-    //         Route::delete('/{id}', [AdminController::class, 'deleteReservation']);
-    //     });
+        // Reservation management
+        Route::prefix('reservations')->group(function () {
+            Route::get('/', [AdminController::class, 'getReservations']);
+            Route::get('/{id}', [AdminController::class, 'getReservation']);
+            Route::put('/{id}/approve', [AdminController::class, 'approveReservation']);
+            Route::put('/{id}/reject', [AdminController::class, 'rejectReservation']);
+            Route::put('/{id}/complete', [AdminController::class, 'completeReservation']);
+            Route::delete('/{id}', [AdminController::class, 'deleteReservation']);
+        });
 
-    //     // Payment management
-    //     Route::prefix('payments')->group(function () {
-    //         Route::get('/', [AdminController::class, 'getPayments']);
-    //         Route::get('/{id}', [AdminController::class, 'getPayment']);
-    //         Route::put('/{id}/confirm', [AdminController::class, 'confirmPayment']);
-    //         Route::delete('/{id}', [AdminController::class, 'deletePayment']);
-    //     });
+        // Payment management
+        Route::prefix('payments')->group(function () {
+            Route::get('/', [AdminController::class, 'getPayments']);
+            Route::get('/{id}', [AdminController::class, 'getPayment']);
+            Route::put('/{id}/confirm', [AdminController::class, 'confirmPayment']);
+            Route::delete('/{id}', [AdminController::class, 'deletePayment']);
+        });
 
-    //     // Reporting and statistics
-    //     Route::prefix('reports')->group(function () {
-    //         Route::get('/reservations', [AdminController::class, 'getReservationReport']);
-    //         Route::get('/payments', [AdminController::class, 'getPaymentReport']);
-    //     });
-    // });
+        // Reporting and statistics
+        Route::prefix('reports')->group(function () {
+            Route::get('/reservations', [AdminController::class, 'getReservationReport']);
+            Route::get('/payments', [AdminController::class, 'getPaymentReport']);
+        });
+    });
+});

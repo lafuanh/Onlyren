@@ -8,16 +8,39 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
+       /**
+     * Run the database seeds.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Create admin user
+        User::create([
+            'name' => 'Admin',
+            'email' => 'admin@admin.com',
+            'password' => Hash::make('123445678'),
+            'role' => 'admin',
+            'email_verified_at' => now(),
+        ]);
 
-        User::factory()->create([
+        // Create some test users
+        User::create([
             'name' => 'Test User',
-            'email' => 'test@example.com',
+            'email' => 'user@test.com',
+            'password' => Hash::make('password'),
+            'role' => 'user',
+            'email_verified_at' => now(),
+        ]);
+
+        User::create([
+            'name' => 'Test Renter',
+            'email' => 'renter@test.com',
+            'password' => Hash::make('password'),
+            'role' => 'renter',
+            'email_verified_at' => now(),
         ]);
     }
+    /**
+     * Seed the application's database.
+     */
+    
 }

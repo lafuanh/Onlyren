@@ -23,8 +23,7 @@ class SearchController extends Controller
                 $query->where(function($q) use ($searchTerm) {
                     $q->where('name', 'LIKE', '%' . $searchTerm . '%')
                       ->orWhere('description', 'LIKE', '%' . $searchTerm . '%')
-                      ->orWhere('location', 'LIKE', '%' . $searchTerm . '%')
-                      ->orWhere('address', 'LIKE', '%' . $searchTerm . '%');
+                      ->orWhere('location', 'LIKE', '%' . $searchTerm . '%');
                 });
             }
 
@@ -114,7 +113,6 @@ class SearchController extends Controller
                     'capacity' => $room->capacity,
                     'price' => $room->getPriceByPeriod($period),
                     'price_per_hour' => $room->price_per_hour,
-                    'address' => $room->address,
                     'location' => $room->location,
                     'amenities' => $room->amenities,
                     'images' => $room->images,

@@ -35,14 +35,16 @@ class Payment extends Model
         'amount' => 'integer',
     ];
 
+    protected $attributes = [
+        'status' => 'pending'
+    ];
+
     /**
      * Defines the relationship to the Reservation model.
      */
     public function reservation()
     {
-        // Because your column is 'reservations_id', we must specify it here.
-        // The Laravel convention would be 'reservation_id'.
-        return $this->belongsTo(Reservation::class, 'reservations_id');
+        return $this->belongsTo(Reservation::class);
     }
 
     /**
@@ -52,7 +54,57 @@ class Payment extends Model
      */
     public static function generateTransactionId()
     {
-        // Using random_bytes is more secure for transaction IDs than uniqid
-        return 'txn_' . bin2hex(random_bytes(16));
+        return 'TXN-' . time() . '-' . rand(1000, 9999);
+    }
+
+    /**
+     * Mark payment as paid.
+     */
+    public function markAsPaid()
+    {
+        $this->update([
+            'status' => 'paid',
+            'payment_date' => now()
+        ]);
+
+        // Update reservation status
+        $this->reservation->update(['status' => 'Payment']);
+    }
+
+    /**
+     * Scope a query to only include pending payments.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    /**
+     * Scope a query to only include paid payments.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopePaid($query)
+    {
+        return $query->where('status', 'paid');
+    }
+
+    /**
+     * Scope a query to only include payments by a specific method.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  string|null  $method
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeByMethod($query, $method)
+    {
+        if ($method) {
+            return $query->where('method', $method);
+        }
+        return $query;
     }
 }

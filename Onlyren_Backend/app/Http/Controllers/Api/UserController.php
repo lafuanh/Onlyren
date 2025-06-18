@@ -8,6 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Reservation;
+use App\Models\Payment;
+use App\Models\Message;
 
 class UserController extends Controller
 {
@@ -95,38 +99,142 @@ class UserController extends Controller
     }
 
     /**
-     * Get user's bookings/reservations (placeholder)
+     * Get user's reservations
      */
     public function getReservations(Request $request): JsonResponse
     {
-        // Placeholder - implement when you add booking functionality
-        $reservations = collect([
-            [
-                'id' => 1,
-                'room_title' => 'Cozy Studio Apartment',
-                'room_id' => 1,
-                'start_date' => '2024-07-01',
-                'end_date' => '2024-12-31',
-                'total_amount' => 3000000,
-                'status' => 'confirmed',
-                'created_at' => now(),
-            ],
-            [
-                'id' => 2,
-                'room_title' => 'Modern Office Space',
-                'room_id' => 2,
-                'start_date' => '2024-08-01',
-                'end_date' => '2024-10-31',
-                'total_amount' => 2400000,
-                'status' => 'pending',
-                'created_at' => now(),
-            ]
-        ]);
+        try {
+            $user = Auth::user();
+            
+            $query = Reservation::with(['room:id,name,location,price_per_hour', 'payment'])
+                ->where('user_id', $user->id);
 
-        return response()->json([
-            'success' => true,
-            'data' => $reservations
-        ]);
+            // Apply filters
+            if ($request->has('status') && $request->status) {
+                $query->where('status', $request->status);
+            }
+
+            if ($request->has('start_date') && $request->start_date) {
+                $query->whereDate('start_date', '>=', $request->start_date);
+            }
+
+            if ($request->has('end_date') && $request->end_date) {
+                $query->whereDate('end_date', '<=', $request->end_date);
+            }
+
+            // Sorting
+            $sortBy = $request->get('sort_by', 'created_at');
+            $sortOrder = $request->get('sort_order', 'desc');
+            $query->orderBy($sortBy, $sortOrder);
+
+            // Pagination
+            $perPage = $request->get('per_page', 15);
+            $reservations = $query->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'data' => $reservations->items(),
+                'meta' => [
+                    'current_page' => $reservations->currentPage(),
+                    'last_page' => $reservations->lastPage(),
+                    'per_page' => $reservations->perPage(),
+                    'total' => $reservations->total(),
+                    'from' => $reservations->firstItem(),
+                    'to' => $reservations->lastItem()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch reservations',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get user's payments
+     */
+    public function getPayments(Request $request): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            $query = Payment::with(['reservation.room:id,name,location'])
+                ->whereHas('reservation', function($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                });
+
+            // Apply filters
+            if ($request->has('status') && $request->status) {
+                $query->where('status', $request->status);
+            }
+
+            if ($request->has('method') && $request->method) {
+                $query->where('method', $request->method);
+            }
+
+            if ($request->has('start_date') && $request->start_date) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+
+            if ($request->has('end_date') && $request->end_date) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+
+            // Sorting
+            $sortBy = $request->get('sort_by', 'created_at');
+            $sortOrder = $request->get('sort_order', 'desc');
+            $query->orderBy($sortBy, $sortOrder);
+
+            // Pagination
+            $perPage = $request->get('per_page', 15);
+            $payments = $query->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'data' => $payments->items(),
+                'meta' => [
+                    'current_page' => $payments->currentPage(),
+                    'last_page' => $payments->lastPage(),
+                    'per_page' => $payments->perPage(),
+                    'total' => $payments->total(),
+                    'from' => $payments->firstItem(),
+                    'to' => $payments->lastItem()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch payments',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get user's conversations
+     */
+    public function getConversations(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            $conversations = Message::getConversations($user->id);
+
+            return response()->json([
+                'success' => true,
+                'data' => $conversations
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch conversations',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

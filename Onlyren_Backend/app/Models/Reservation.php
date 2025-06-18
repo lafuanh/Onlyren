@@ -30,7 +30,7 @@ class Reservation extends Model
         'end_date' => 'date',
         'duration' => 'integer',
         'guests' => 'integer',
-        'total_amount' => 'float'
+        'total_amount' => 'decimal:2',
     ];
 
     protected $attributes = [
@@ -132,7 +132,11 @@ class Reservation extends Model
         $query = self::where('room_id', $roomId)
             ->where('status', '!=', 'Cancelled')
             ->where(function ($dateQuery) use ($startDate, $endDate) {
-                // ... (all your existing date logic stays the same)
+                $dateQuery->where(function ($q) use ($startDate, $endDate) {
+                    // Check if the new reservation overlaps with existing ones
+                    $q->where('start_date', '<=', $endDate)
+                      ->where('end_date', '>=', $startDate);
+                });
             })
             ->where(function ($timeQuery) use ($startTime, $endTime) {
                 $timeQuery->where('start_time', '<', $endTime)
@@ -143,8 +147,7 @@ class Reservation extends Model
             $query->where('id', '!=', $excludeId);
         }
 
-        // CHANGE THIS LINE: Add lockForUpdate() here
-        return $query->lockForUpdate()->exists();
+        return $query->exists();
     }
 
 

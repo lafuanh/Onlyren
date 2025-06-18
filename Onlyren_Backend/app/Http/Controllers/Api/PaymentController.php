@@ -20,7 +20,7 @@ class PaymentController extends Controller
     {
         try {
             $user = Auth::user();
-            $query = Payment::with(['reservation.room:id,name', 'reservation.user:id,name,email']);
+            $query = Payment::with(['reservation.room:id,name,description,images,location', 'reservation.user:id,name,email']);
 
             // Filter by user role
             if ($user->role === 'user') {
@@ -84,7 +84,7 @@ class PaymentController extends Controller
     {
         try {
             $payment = Payment::with([
-                'reservation.room:id,name,description,images,address',
+                'reservation.room:id,name,description,images,location',
                 'reservation.user:id,name,email'
             ])->findOrFail($id);
 
@@ -129,7 +129,7 @@ class PaymentController extends Controller
             }
 
             // Check if reservation can be paid
-            if ($reservation->status !== 'Pending') {
+            if ($reservation->status !== 'pending') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Reservation cannot be paid with status: ' . $reservation->status
@@ -156,7 +156,7 @@ class PaymentController extends Controller
             $payment->update([
                 'method' => $request->method,
                 'notes' => $request->notes,
-                'status' => 'Paid',
+                'status' => 'paid',
                 'payment_date' => now()
             ]);
 
@@ -165,7 +165,7 @@ class PaymentController extends Controller
 
             DB::commit();
 
-            $payment->load(['reservation.room:id,name,images,address']);
+            $payment->load(['reservation.room:id,name,images,location']);
 
             return response()->json([
                 'success' => true,
@@ -200,7 +200,7 @@ class PaymentController extends Controller
                 ], 403);
             }
 
-            if ($payment->status !== 'Paid') {
+            if ($payment->status !== 'paid') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Payment is not in paid status'
@@ -292,7 +292,7 @@ class PaymentController extends Controller
     {
         try {
             $payment = Payment::with([
-                'reservation.room:id,name,address,price_per_hour',
+                'reservation.room:id,name,location,price_per_hour',
                 'reservation.user:id,name,email'
             ])->findOrFail($id);
 

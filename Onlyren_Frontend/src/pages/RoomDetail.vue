@@ -3,6 +3,9 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { fetchRoomDetails } from '@/api/room'; 
 import { createReservation } from '@/api/reservation'; 
+import { isAuthenticated } from '@/api/auth';
+import { sendMessage } from '@/api/messages';
+import OnlyHeader from '@/components/OnlyHeader.vue';
 import OnlyFooter from '@/components/OnlyFooter.vue';
 
 const room = ref(null);
@@ -17,9 +20,24 @@ const reservationForm = ref({
   notes: '' 
 });
 const reservationError = ref(null);
+const tanyaError = ref(null);
+const tanyaLoading = ref(false);
 
 const route = useRoute();
 const router = useRouter();
+
+// Add missing computed property for price preview
+const pricePreview = computed(() => {
+  if (!room.value?.price_per_hour || !reservationForm.value.start_time || !reservationForm.value.end_time) {
+    return 0;
+  }
+  
+  const startTime = new Date(`1970-01-01T${reservationForm.value.start_time}`);
+  const endTime = new Date(`1970-01-01T${reservationForm.value.end_time}`);
+  const durationHours = Math.ceil((endTime - startTime) / (1000 * 60 * 60));
+  
+  return room.value.price_per_hour * durationHours;
+});
 
 const loadRoomDetails = async () => {
   isLoading.value = true;
@@ -35,6 +53,16 @@ const loadRoomDetails = async () => {
 
 const submitReservation = async () => {
   reservationError.value = null;
+
+  // Check if user is authenticated
+  if (!isAuthenticated()) {
+    reservationError.value = "Please log in to create a reservation.";
+    // Optionally redirect to login page
+    setTimeout(() => {
+      router.push('/auth');
+    }, 2000);
+    return;
+  }
 
   if (!reservationForm.value.date || !reservationForm.value.start_time || !reservationForm.value.end_time) {
     reservationError.value = "Please fill in the date and time.";
@@ -65,20 +93,60 @@ const submitReservation = async () => {
     }
 
   } catch (err) {
-    if (err.response && err.response.data && err.response.data.message) {
+    console.error('Reservation error:', err);
+    
+    // Handle specific error types
+    if (err.response?.status === 401) {
+      reservationError.value = "Please log in to create a reservation.";
+      setTimeout(() => {
+        router.push('/auth');
+      }, 2000);
+    } else if (err.response?.status === 422) {
+      // Validation errors
+      const validationErrors = err.response.data.errors;
+      if (validationErrors) {
+        const errorMessages = Object.values(validationErrors).flat();
+        reservationError.value = errorMessages.join(', ');
+      } else {
+        reservationError.value = err.response.data.message || 'Validation failed.';
+      }
+    } else if (err.response?.status === 409) {
+      reservationError.value = 'This time slot is not available. Please choose a different time.';
+    } else if (err.response?.data?.message) {
       reservationError.value = err.response.data.message;
     } else {
-      reservationError.value = err.message || 'Reservation failed. The time slot may be unavailable.';
+      reservationError.value = err.message || 'Reservation failed. Please try again.';
     }
-    console.error(err);
   } finally {
     isSubmitting.value = false;
   }
 };
 
+const tanyaRenter = async () => {
+  tanyaError.value = null;
+  if (!isAuthenticated()) {
+    tanyaError.value = 'Silakan login untuk mengirim pesan ke pemilik ruangan.';
+    setTimeout(() => router.push('/auth'), 1500);
+    return;
+  }
+  if (!room.value || !(room.value.owner_id || room.value.renter_id)) {
+    tanyaError.value = 'Data pemilik ruangan tidak ditemukan.';
+    return;
+  }
+  tanyaLoading.value = true;
+  try {
+    const receiverId = room.value.owner_id || room.value.renter_id;
+    await sendMessage(receiverId, 'Halo, saya ingin bertanya tentang ruangan ini.');
+    // Redirect to profile page, messages tab (optionally pass renter id as query)
+    router.push({ path: '/profile', query: { tab: 'messages', renter: receiverId } });
+  } catch (err) {
+    tanyaError.value = err.response?.data?.message || err.message || 'Gagal mengirim pesan.';
+  } finally {
+    tanyaLoading.value = false;
+  }
+};
+
 onMounted(loadRoomDetails);
-
-
 
 // Utility methods
 const formatCurrency = (value) => {
@@ -240,12 +308,20 @@ const formatCurrency = (value) => {
           <div class="sticky top-6">
             <div class="bg-white rounded-xl p-6 shadow-lg">
               <div class="flex space-x-2 mb-6">
-                <button class="flex-1 bg-gray-600 text-white py-2 px-4 rounded-lg font-medium">
-                  Tanya
+                <button class="flex-1 bg-gray-600 text-white py-2 px-4 rounded-lg font-medium" @click="tanyaRenter" :disabled="tanyaLoading">
+                  {{ tanyaLoading ? 'Mengirim...' : 'Tanya' }}
                 </button>
                 <button class="flex-1 bg-orange-500 text-white py-2 px-4 rounded-lg font-medium">
                   Ajukan Sewa
                 </button>
+              </div>
+
+              <!-- Tanya Error Display -->
+              <div 
+                v-if="tanyaError" 
+                class="bg-red-100 text-red-800 p-3 rounded-lg mb-4 text-sm"
+              >
+                {{ tanyaError }}
               </div>
 
               <form @submit.prevent="submitReservation">

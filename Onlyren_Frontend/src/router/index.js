@@ -33,7 +33,7 @@ const requireAuth = async (to, from, next) => {
 const requireAdminAuth = async (to, from, next) => {
   try {
     const user = await getCurrentUser()
-    if (user && user.is_admin) {
+    if (user && user.role === 'admin') {
       next()
     } else {
       next('/login') // Redirect to login page if user is not an admin
@@ -47,7 +47,7 @@ const requireAdminAuth = async (to, from, next) => {
 const requireRenterAuth = async (to, from, next) => {
   try {
     const user = await getCurrentUser()
-    if (user && user.is_renter) {
+    if (user && user.role === 'renter') {
       next()
     } else {
       next('/login') // Redirect to login page if user is not a renter
@@ -215,7 +215,7 @@ const routes = [
     path: '/admin/dashboard',
     name: 'AdminDashboard',
     component: AdminProfilePage,
-    //beforeEnter: requireAdminAuth,
+    beforeEnter: requireAdminAuth,
     meta: { title: 'Admin Dashboard' }
   },
   // {

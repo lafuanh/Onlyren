@@ -360,6 +360,7 @@ class RoomController extends Controller
             'rating' => (float) $room->rating,
             'review_count' => (int) $room->review_count,
             'is_available' => (bool) $room->is_available,
+            'owner_id' => $room->owner_id, // Add owner_id for frontend messaging
             'created_at' => $room->created_at,
             'updated_at' => $room->updated_at
         ];

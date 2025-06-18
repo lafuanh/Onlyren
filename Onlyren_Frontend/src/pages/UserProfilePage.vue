@@ -115,7 +115,7 @@
         <div v-if="activeTab === 'reservations'">
           <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6">My Reservations</h2>
-            <UserReservations :reservations="reservations" @cancel="handleCancelReservation" />
+            <UserReservations :reservations="reservations" :loading="loadingReservations" @cancel="handleCancelReservation" />
           </div>
         </div>
 
@@ -123,7 +123,7 @@
         <div v-if="activeTab === 'payments'">
           <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6">Payment History</h2>
-            <UserPayments :payments="payments" @pay="handlePayment" />
+            <UserPayments :payments="payments" :loading="loadingPayments" @pay="handlePayment" />
           </div>
         </div>
 
@@ -131,7 +131,7 @@
         <div v-if="activeTab === 'messages'">
           <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6">Messages</h2>
-            <UserMessages :conversations="conversations" @send="handleSendMessage" />
+            <UserMessages :conversations="conversations" :loading="loadingConversations" @send="handleSendMessage" />
           </div>
         </div>
       </div>
@@ -203,6 +203,11 @@ const successMessage = ref(null)
 const showLogoutModal = ref(false)
 const loggingOut = ref(false)
 
+// Loading states
+const loadingReservations = ref(false)
+const loadingPayments = ref(false)
+const loadingConversations = ref(false)
+
 const router = useRouter()
 const headerRef = ref(null)
 
@@ -241,29 +246,41 @@ const loadProfile = async () => {
 }
 
 const loadReservations = async () => {
+  loadingReservations.value = true
   try {
-    reservations.value = await fetchUserReservations()
+    const response = await fetchUserReservations()
+    reservations.value = response.data || []
   } catch (err) {
     console.error('Failed to load reservations:', err)
     showMessage('Failed to load reservations', 'error')
+  } finally {
+    loadingReservations.value = false
   }
 }
 
 const loadPayments = async () => {
+  loadingPayments.value = true
   try {
-    payments.value = await fetchUserPayments()
+    const response = await fetchUserPayments()
+    payments.value = response.data || []
   } catch (err) {
     console.error('Failed to load payments:', err)
     showMessage('Failed to load payment history', 'error')
+  } finally {
+    loadingPayments.value = false
   }
 }
 
 const loadConversations = async () => {
+  loadingConversations.value = true
   try {
-    conversations.value = await fetchUserConversations()
+    const response = await fetchUserConversations()
+    conversations.value = response.data || []
   } catch (err) {
     console.error('Failed to load conversations:', err)
     showMessage('Failed to load conversations', 'error')
+  } finally {
+    loadingConversations.value = false
   }
 }
 
